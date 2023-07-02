@@ -151,11 +151,11 @@ end
 
 discover_user = function(sn, uid)
   assert(string.match(uid, "^[0-9A-Za-z._]+$"))
-  discover_item(discovered_items, "u:" .. uid)
+  discover_item(discovered_items, "user:" .. uid)
   if type(sn) == "string" then
     assert(string.match(sn, "^[0-9]+$"))
     discovered_data["uid"][uid] = sn
-    discover_item(discovered_items, "sn:" .. sn)
+    discover_item(discovered_items, "user-sn:" .. sn)
   else
     assert(sn == nil)
   end
@@ -164,7 +164,7 @@ end
 discover_blog = function(uid, burl, bid)
   assert(string.match(uid, "^[0-9A-Za-z._]+$"))
   assert(string.match(burl, "^[0-9A-Za-z]+$"))
-  discover_item(discovered_items, "b:" .. uid .. ":" .. burl)
+  discover_item(discovered_items, "blog:" .. uid .. ":" .. burl)
   if type(bid) == "string" then
     assert(string.match(bid, "^[0-9]+$"))
     discovered_data["blog"][uid .. ":" .. burl .. ":" .. bid] = true
@@ -177,14 +177,14 @@ discover_article = function(uid, burl, aid)
   assert(string.match(uid, "^[0-9A-Za-z._]+$"))
   assert(string.match(burl, "^[0-9A-Za-z]+$"))
   assert(string.match(aid, "^[0-9]+$"))
-  discover_item(discovered_items, "ba:" .. uid .. ":" .. burl .. ":" .. aid)
+  discover_item(discovered_items, "article:" .. uid .. ":" .. burl .. ":" .. aid)
 end
 
 discover_album = function(uid, aid)
   assert(string.match(uid, "^[0-9A-Za-z._]+$"))
   assert(string.match(aid, "^[0-9]+$"))
   discovered_data["album"][aid] = uid
-  discover_item(discovered_items, "a:" .. uid .. ":" .. aid)
+  discover_item(discovered_items, "album:" .. uid .. ":" .. aid)
 end
 
 discover_vlog = function(vlogid)
@@ -192,69 +192,69 @@ discover_vlog = function(vlogid)
   -- generate correctly padded canonical vlogid
 	vlogid = #vlogid % 4 == 2 and (vlogid .. '==') or #vlogid % 4 == 3 and (vlogid .. '=') or vlogid
   discovered_data["vlog"][vlogid] = string.match(base64.decode(vlogid), "%-([0-9]+)%.[0-9a-z]+$")
-  discover_item(discovered_items, "v:" .. vlogid)
+  discover_item(discovered_items, "vlog:" .. vlogid)
   return vlogid
 end
 
 discover_keyword = function(keyword)
   -- keyword = keyword:gsub("[%?&=]", "")
   keyword = urlcode.escape(keyword)
-  discover_item(discovered_items, "kw:" .. keyword)
+  discover_item(discovered_items, "keyword:" .. keyword)
 end
 
 find_item = function(url)
   local value = string.match(url, "^https?://avatar%.xuite%.net/([0-9]+)$")
-  local type_ = "sn"
+  local type_ = "user-sn"
   local other = nil
   if not value then
     value = string.match(url, "^https?://m%.xuite%.net/home/([0-9A-Za-z.][0-9A-Za-z._]*)$")
-    type_ = "u"
+    type_ = "user"
   end
   if not value then
     local uid, burl = string.match(url, "^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)$")
     if uid and burl then
       value = uid .. ":" .. burl
     end
-    type_ = "b"
+    type_ = "blog"
   end
   if not value then
     local uid, burl = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)$")
     if uid and burl then
       value = uid .. ":" .. burl
     end
-    type_ = "b"
+    type_ = "blog"
   end
   if not value then
     local uid, burl, aid = string.match(url, "^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)$")
     if uid and burl and aid then
       value = uid .. ":" .. burl .. ":" .. aid
     end
-    type_ = "ba"
+    type_ = "article"
   end
   if not value then
     local uid, burl, aid = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)$")
     if uid and burl and aid then
       value = uid .. ":" .. burl .. ":" .. aid
     end
-    type_ = "ba"
+    type_ = "article"
   end
   if not value then
     local uid, aid = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$")
     if uid and aid then
       value = uid .. ":" .. aid
     end
-    type_ = "a"
+    type_ = "album"
   end
   if not value then
     local uid, aid = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$")
     if uid and aid then
       value = uid .. ":" .. aid
     end
-    type_ = "a"
+    type_ = "album"
   end
   if not value then
     value = string.match(url, "^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$")
-    type_ = "v"
+    type_ = "vlog"
   end
   if not value then
     value = string.match(url, "^https?://pic%.xuite%.net/thumb/(.+)")
@@ -265,7 +265,7 @@ find_item = function(url)
     if value then
       value = urlcode.unescape(value)
     end
-    type_ = "kw"
+    type_ = "keyword"
   end
   if value then
     return {
@@ -318,81 +318,81 @@ allowed = function(url, parenturl)
   end
 
   for pattern, type_ in pairs({
-    ["^https?://avatar%.xuite%.tw/([0-9]+)/s$"]="sn",
-    ["^https?://avatar%.xuite%.net/([0-9]+)$"]="sn",
-    ["^https?://avatar%.xuite%.net/([0-9]+)/s$"]="sn",
-    ["^https?://avatar%.xuite%.net/([0-9]+)/s%?t=[0-9]*$"]="sn",
-    ["^https?://m%.xuite%.net/home/([0-9A-Za-z._]+)$"]="u",
-    ["^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)$"]="u",
-    ["^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)/([0-9A-Za-z]+)$"]="b",
-    ["^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)/([0-9A-Za-z]+)/([0-9]+)$"]="ba",
-    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)$"]="u",
-    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)%?t=tag&p=[0-9a-f]+$"]="u",
-    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)$"]="a",
-    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)/[0-9]+$"]="a",
-    ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)$"]="u",
-    ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?vt=[01]$"]="u",
-    ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?t=cat&p=/[0-9]+&dir_num=all$"]="u",
-    ["^https?://m%.xuite%.net/vlog/[0-9A-Za-z._]+/([0-9A-Za-z=]+)"]="v",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="u",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?&p=[0-9]+$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?st=c&p=[0-9]+&w=[0-9]+$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?st=c&w=[0-9]+&p=[0-9]+$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/expert%-view$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/list%-view$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/snapshot%-view$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/brick%-view$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/mosaic%-view$"]="b",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)$"]="ba",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)/cover[0-9]*%.jpg$"]="ba",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)/cover[0-9]*%.jpg%?d=avatar_[mw]%.jpg$"]="ba",
-    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)%-[^/%?&=]*$"]="ba",
+    ["^https?://avatar%.xuite%.tw/([0-9]+)/s$"]="user-sn",
+    ["^https?://avatar%.xuite%.net/([0-9]+)$"]="user-sn",
+    ["^https?://avatar%.xuite%.net/([0-9]+)/s$"]="user-sn",
+    ["^https?://avatar%.xuite%.net/([0-9]+)/s%?t=[0-9]*$"]="user-sn",
+    ["^https?://m%.xuite%.net/home/([0-9A-Za-z._]+)$"]="user",
+    ["^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)$"]="user",
+    ["^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)/([0-9A-Za-z]+)$"]="blog",
+    ["^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)/([0-9A-Za-z]+)/([0-9]+)$"]="article",
+    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)$"]="user",
+    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)%?t=tag&p=[0-9a-f]+$"]="user",
+    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)$"]="album",
+    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)/[0-9]+$"]="album",
+    ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)$"]="user",
+    ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?vt=[01]$"]="user",
+    ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?t=cat&p=/[0-9]+&dir_num=all$"]="user",
+    ["^https?://m%.xuite%.net/vlog/[0-9A-Za-z._]+/([0-9A-Za-z=]+)"]="vlog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?&p=[0-9]+$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?st=c&p=[0-9]+&w=[0-9]+$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?st=c&w=[0-9]+&p=[0-9]+$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/expert%-view$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/list%-view$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/snapshot%-view$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/brick%-view$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/mosaic%-view$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)$"]="article",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)/cover[0-9]*%.jpg$"]="article",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)/cover[0-9]*%.jpg%?d=avatar_[mw]%.jpg$"]="article",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)%-[^/%?&=]*$"]="article",
     ["^https?://pic%.xuite%.net/thumb/(.+)$"]="pic-thumb",
-    ["^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+$"]="u",
-    ["^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+%*[0-9]+$"]="u",
-    ["^https?://photo%.xuite%.net/_category%?st=search&uid=([0-9A-Za-z._]+)&sk=[^%?&=]*$"]="u",
-    ["^https?://photo%.xuite%.net/_category%?st=search&uid=([0-9A-Za-z._]+)&sk=[^%?&=]+%*[0-9]+$"]="u",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="u",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$"]="a",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/[0-9]+%.jpg$"]="a",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/[0-9]+%.jpg/sizes/[oxlmst]/$"]="a",
-    ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="u",
-    ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)%?vt=[01]$"]="u",
-    ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="v",
-    ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="v",
-    ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="v"
+    ["^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+$"]="user",
+    ["^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+%*[0-9]+$"]="user",
+    ["^https?://photo%.xuite%.net/_category%?st=search&uid=([0-9A-Za-z._]+)&sk=[^%?&=]*$"]="user",
+    ["^https?://photo%.xuite%.net/_category%?st=search&uid=([0-9A-Za-z._]+)&sk=[^%?&=]+%*[0-9]+$"]="user",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$"]="album",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/[0-9]+%.jpg$"]="album",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/[0-9]+%.jpg/sizes/[oxlmst]/$"]="album",
+    ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
+    ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)%?vt=[01]$"]="user",
+    ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
+    ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="vlog",
+    ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog"
   }) do
     local match = nil
     local other1 = nil
     local other2 = nil
-    if type_ == "ba" then
+    if type_ == "article" then
       match, other1, other2 = string.match(url, pattern)
-      -- a strange behavior of ba:mobile is that <a class="page-blogshow-random-link" href="..."> (隨機文章)
+      -- a strange behavior of article:mobile is that <a class="page-blogshow-random-link" href="..."> (隨機文章)
       -- sometimes gives (https://m.xuite.net)/blog/blog/{user_id}/{article_id} or deleted articles,
-      -- and we knew that the user https://m.xuite.net/blog/blog (u:blog, sn:11731848)
-      -- has only one blog https://m.xuite.net/blog/blog/blog (b:blog:blog:6063305, https://blog.xuite.net/blog/blog).
+      -- and we knew that the user https://m.xuite.net/blog/blog (user:blog, user-sn:11731848)
+      -- has only one blog https://m.xuite.net/blog/blog/blog (blog:blog:blog:6063305, https://blog.xuite.net/blog/blog).
       if match == "blog" and other1 ~= nil and other1 ~= "blog" then
         discover_user(nil, other1)
         match = nil
       end
-    elseif type_ == "b" or type_ == "a" then
+    elseif type_ == "blog" or type_ == "album" then
       match, other1 = string.match(url, pattern)
     else
       match = string.match(url, pattern)
     end
     if match then
-      if type_ == "b" then
+      if type_ == "blog" then
         discover_blog(match, other1, nil)
         match = match .. ":" .. other1
-      elseif type_ == "ba" then
+      elseif type_ == "article" then
         discover_blog(match, other1, nil)
         discover_article(match, other1, other2)
         match = match .. ":" .. other1 .. ":" .. other2
-      elseif type_ == "a" then
+      elseif type_ == "album" then
         discover_album(match, other1)
         match = match .. ":" .. other1
-      elseif type_ == "v" then
+      elseif type_ == "vlog" then
         match = discover_vlog(match)
       end
       local new_item = type_ .. ":" .. match
@@ -634,7 +634,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   local function fix_case(newurl)
-    if not string.match(newurl, "^https?://.") then
+    if not string.match(newurl, "^https?://[^/]") then
       return newurl
     end
     if string.match(newurl, "^https?://[^/]+$") then
@@ -769,7 +769,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     check(redir_url)
   end
 
-  if item_type == "sn" then
+  if item_type == "user-sn" then
     if string.match(url, "^https?://avatar%.xuite%.net/[0-9]+$") then
       assert(string.match(url, "^https?://avatar%.xuite%.net/([0-9]+)$") == item_value)
       check("https://my.xuite.net/service/friend/api/external/friendList.php?sn="..item_value.."&listType=addme")
@@ -817,7 +817,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local user_sn = string.match(url, "^https?://photo%.xuite%.net/_category%?sn=([0-9]+)$")
       html = read_file(file)
       local sn = string.match(html, "<p>檢舉需要<a href=\"/@login%?furl=%%2F_category%%3Fsn%%3D([0-9]+)\">登入會員 &raquo;</a>。</p>")
-      -- u:a:search 搜尋相簿
+      -- user:album:search 搜尋相簿
       local uid = string.match(html, "<input id=\"searchUid\" type=\"hidden\" value=\"([0-9A-Za-z._]*)\">")
       -- this widget can be turned off by the user. so if searchUid does not appear, the user must exist
       if not uid then
@@ -833,8 +833,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "u" then
-    -- u:home
+  if item_type == "user" then
+    -- user:home
     if string.match(url, "^https?://m%.xuite%.net/home/[0-9A-Za-z._]+$") then
       assert(string.match(url, "^https?://m%.xuite%.net/home/([0-9A-Za-z._]+)$") == item_value)
       html = read_file(file)
@@ -878,7 +878,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://m.xuite.net/vlog/"..item_value)
       check("https://m.xuite.net/photo/"..item_value)
       check("https://m.xuite.net/blog/"..item_value)
-      -- u:friend 我的好友
+      -- user:friend 我的好友
       -- https://photo.xuite.net/javascripts/picture_user.comb.js if ($("#FriendList").length > 0) window.WIDGET.FRIEND.init() $.ajax({})
       -- this widget can be turned off by the user
       table.insert(urls, {
@@ -886,10 +886,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         headers={ ["Origin"] = "https://photo.xuite.net", ["Referer"] = (sn and ("https://photo.xuite.net/_category?sn=" .. sn) or nil), ["X-Requested-With"] = "XMLHttpRequest" },
         post_data="act=getAllFriendsList&uid=" .. item_value
       })
-      -- u:about 關於我
+      -- user:about 關於我
       -- https://photo.xuite.net/javascripts/picture_user.comb.js if ($("#avatarContent").length > 0) window.WIDGET.AVATAR.init() $.ajax({})
       check("https://blog.xuite.net/_theme/member_data.php?callback="..EXPANDO.."_"..TSTAMP.."&lid="..item_value.."&output=json&callback=WIDGET.AVATAR.processDesc&_="..TSTAMP, "https://photo.xuite.net/")
-    -- u:about
+    -- user:about
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/member_data%.php%?.+&lid=[0-9A-Za-z._]+.+&callback=WIDGET%.AVATAR%.processDesc") then
       local user_id = string.match(url, "^https?://blog%.xuite%.net/_theme/member_data%.php%?.+&lid=([0-9A-Za-z._]+).+&callback=WIDGET%.AVATAR%.processDesc")
       html = read_file(file)
@@ -904,7 +904,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       else
         print("Found nothing from member_data")
       end
-    -- u:friend
+    -- user:friend
     elseif string.match(url, "^https?://photo%.xuite%.net/_friends$") then
       html = read_file(file)
       local json = JSON:decode(html)
@@ -918,11 +918,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           end
         end
       end
-    -- u:b
+    -- user:blog
     elseif string.match(url, "^https?://m%.xuite%.net/blog/[0-9A-Za-z._]+$") then
       local user_id = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)$")
       assert(user_id == item_value)
-    -- u:a
+    -- user:album
     elseif string.match(url, "^https?://m%.xuite%.net/photo/[0-9A-Za-z._]+$") then
       local user_id = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)$")
       html = read_file(file)
@@ -936,7 +936,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if sn then
         assert(uid == user_id)
         user_ids[sn] = uid
-        -- u:a:tag 天邊一朵雲
+        -- user:album:tag 天邊一朵雲
         -- https://photo.xuite.net/_category?
         -- https://s.photo.xuite.net/static/tag_js/tag_js_config.js
         -- https://photo.xuite.net/javascripts/picture_user.comb.js if ($("#tagSide").length > 0) window.WIDGET.TAG.init() XMLHttp.sendReq()
@@ -989,7 +989,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. user_id .. "&limit=12&offset=" .. string.format("%.0f", tonumber(offset) + #json["rsp"]) .. "&sk=&p=", referer)
         end
       end
-    -- u:a:tag
+    -- user:album:tag
     elseif string.match(url, "^https?://photo%.xuite%.net/@tag_lib_js$") then
       html = read_file(file)
       local json = JSON:decode(html)
@@ -1036,11 +1036,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. user_id .. "&limit=12&offset=" .. string.format("%.0f", tonumber(offset) + #json["rsp"]) .. "&sk=&p=", referer)
         end
       end
-    -- u:a:category
+    -- user:album:category
     elseif string.match(url, "^https?://photo%.xuite%.net/_category%?st=cat&uid=[0-9A-Za-z._]+&sk=[0-9]+$") then
       local user_id = string.match(url, "^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+$")
       html = read_file(file)
-      -- u:a:visitor 誰拜訪過我
+      -- user:album:visitor 誰拜訪過我
       -- this widget can be turned off by the user, causing the visitor_key not to be displayed
       local visitor_key = string.match(html, "\r\n    <script>\r\n        new XUI%.Widgets%.Visitor%(document%.getElementById%('visitorList'%), {\r\n            key : '([0-9A-Za-z=]+)'\r\n        }%)%.render%(%); \r\n    </script>\r\n")
       if visitor_key then
@@ -1054,7 +1054,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         "&key=" .. visitor_key ..
         "&_=" .. TSTAMP
       , "https://photo.xuite.net/")
-    -- u:a:visitor
+    -- user:album:visitor
     elseif string.match(url, "^https?://my%.xuite%.net/api/visitor2xml%.php%?") then
       html = read_file(file)
       local json = JSON:decode(string.match(html, "^jQuery[0-9]+_[0-9]+%((.+)%)$"))
@@ -1063,7 +1063,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           discover_user(item["MEMBERID"], item["LOGINID"])
         end
       end
-    -- u:v
+    -- user:vlog
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/[0-9A-Za-z._]+$") then
       local user_id = string.match(url, "^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)$")
       html = read_file(file)
@@ -1100,7 +1100,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           check("https://m.xuite.net/vlog/ajax?apiType=more&offset=" .. string.format("%.0f", json["offset"]) .. "&user=" .. user_id .. "&vt=0&t=list&p=", referer)
         end
       end
-    -- u:v:playlist
+    -- user:vlog:playlist
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/[0-9A-Za-z._]+%?vt=1$") then
       local user_id = string.match(url, "^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?vt=1$")
       html = read_file(file)
@@ -1167,7 +1167,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       for uid in string.gmatch(html, "<span class=\"single%-playlist%-video%-author%-label\" >上傳者：</span><a href=\"/([0-9A-Za-z._]+)\" >") do
         discover_user(nil, uid)
       end
-    -- u:v:directory
+    -- user:vlog:directory
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/[0-9A-Za-z._]+%?t=cat&p=/[0-9]+&dir_num=all$") then
       local user_id, p = string.match(url, "^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?t=cat&p=(/[0-9]+)&dir_num=all$")
       html = read_file(file)
@@ -1196,7 +1196,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local referer = "https://m.xuite.net/vlog/" .. user_id .. "?t=cat&p=/" .. p .. "&dir_num=all"
         check("https://m.xuite.net/vlog/ajax?apiType=more&offset=" .. json["offset"] .. "&user=" .. user_id .. "&vt=0&t=cat&p=/" .. p, referer)
       end
-    -- u:api
+    -- user:api
     elseif string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
       local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
       html = read_file(file)
@@ -1326,8 +1326,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "b" then
-    -- b:pc:view
+  if item_type == "blog" then
+    -- blog:pc:view
     if string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+$")
       or string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+%?&p=[0-9]+$")
       or string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+%?st=c&p=[0-9]+&w=[0-9]+$")
@@ -1358,7 +1358,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check(url .. "/expert-view")
         check(url .. "/atom.xml")
         check(url .. "/rss.xml")
-        -- b:pc:count 參觀人次統計 function getCountSide(json){}
+        -- blog:pc:count 參觀人次統計 function getCountSide(json){}
         check(
           "https://blog.xuite.net/_theme/CountSideExp.php"
           .. "?bid=" .. _config["bid"]
@@ -1385,7 +1385,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         .. "&ga=" .. TSTAMP
       , url)
       if at_root then
-        -- b:pc:visitor 誰拜訪過我 https://img.xuite.net/xui/combo/w/visitor
+        -- blog:pc:visitor 誰拜訪過我 https://img.xuite.net/xui/combo/w/visitor
         -- this widget can be turned off by the user, causing the visitor_key not to be displayed
         local visitor_key = string.match(html, "\r\n<script>\r\n	var visitor = %$%(\"div%.visitorSide\"%)%.get%(0%);\r\n	new XUI%.Widgets%.Visitor%(visitor, {\r\n        key : '([0-9A-Za-z=]+)'\r\n    }%)%.render%(%);\r\n</script>")
         if visitor_key ~= nil then
@@ -1403,14 +1403,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           .. "&key=" .. visitor_key
           .. "&_=" .. TSTAMP
         , "https://blog.xuite.net/")
-        -- b:pc:GA4 https://img.xuite.net/xui/combo/w/ga4 XUI.Widgets.GA4(channel, mode, id, content_group_index, content_group_value)
+        -- blog:pc:GA4 https://img.xuite.net/xui/combo/w/ga4 XUI.Widgets.GA4(channel, mode, id, content_group_index, content_group_value)
         local site_label = string.match(html, "<script type=\"text/javascript\">%$%.getScript%('/_theme/GAExp%.php%?site_label='%+([0-9]+)%);</script>")
         if site_label then
           -- collect site_label numbers and leave them to URLs
           check("https://blog.xuite.net/_theme/GAExp.php?site_label=" .. site_label, url)
         end
       end
-    -- b:pc:visitor
+    -- blog:pc:visitor
     elseif string.match(url, "^https?://my%.xuite%.net/api/visitor2xml%.php%?") then
       html = read_file(file)
       local json = JSON:decode(string.match(html, "^jQuery[0-9]+_[0-9]+%((.+)%)$"))
@@ -1419,7 +1419,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           discover_user(item["MEMBERID"], item["LOGINID"])
         end
       end
-    -- b:pc:_theme
+    -- blog:pc:_theme
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/ArticleCounterExp%.php%?") then
       local set = string.match(url, "&set=([0-9A-Za-z=]+)")
       if string.len(set) >= 1 then
@@ -1451,7 +1451,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           html = html .. " " .. article["SubContent"]
         end
       end
-    -- b:mobile:view
+    -- blog:mobile:view
     elseif string.match(url, "^https?://m%.xuite%.net/blog/[0-9A-Za-z._]+/[0-9A-Za-z]+$") then
       local user_id, blog_url = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)/([0-9A-Za-z]+)$")
       html = read_file(file)
@@ -1500,8 +1500,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "ba" then
-    -- ba:pc
+  if item_type == "article" then
+    -- article:pc
     if string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$")
       or string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+%-[^/?]*$") then
       html = read_file(file)
@@ -1574,7 +1574,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           .. "&ga=" .. TSTAMP
         , url)
       end
-    -- ba:pc:_theme
+    -- article:pc:_theme
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/ArticleDetailCounterExp%.php%?") then
       local article_id = string.match(url, "%?aid=([0-9]+)")
       html = read_file(file)
@@ -1622,7 +1622,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         , referer)
       end
       html = json["trackBack"]["content"]
-    -- ba:mobile
+    -- article:mobile
     elseif string.match(url, "^https?://m%.xuite%.net/blog/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$") then
       local user_id, article_id = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)/[0-9A-Za-z]+/([0-9]+)$")
       html = read_file(file)
@@ -1670,8 +1670,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "a" then
-    -- a:list
+  if item_type == "album" then
+    -- album:list
     if string.match(url, "^https?://m%.xuite%.net/photo/[0-9A-Za-z._]+/[0-9]+$") then
       local user_id, album_id = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)$")
       html = read_file(file)
@@ -1716,7 +1716,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
         check("https://m.xuite.net/rpc/photo?method=loadPhotos&userId=" .. user_id .. "&albumId=" .. album_id ..  "&limit=24&offset=" .. string.format("%.0f", tonumber(offset) + #json["rsp"]["photos"]), referer)
       end
-    -- a:photo
+    -- album:photo
     elseif string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg$") then
       local user_id = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z._]+)/[0-9]+/[0-9]+%.jpg$")
       html = read_file(file)
@@ -1774,8 +1774,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "v" then
-    -- v:pc
+  if item_type == "vlog" then
+    -- vlog:pc
     if string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+$") then
       local vlog_id = string.match(url, "^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$")
       assert(vlog_id == item_value)
@@ -1838,7 +1838,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
       end
       -- tprint(properties)
-    -- v:mobile
+    -- vlog:mobile
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/[0-9A-Za-z._]+/[0-9A-Za-z=]+$") then
       local user_id, vlog_id = string.match(url, "^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)/([0-9A-Za-z=]+)$")
       assert(vlog_id == item_value)
@@ -1886,7 +1886,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "kw" then
+  if item_type == "keyword" then
     if string.match(url, "^https?://m%.xuite%.net/rpc/search%?") then
       local method = string.match(url, "%?method=([a-z]+)")
       local kw = string.match(url, "&kw=([^%?&=]+)")

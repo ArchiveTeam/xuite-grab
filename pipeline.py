@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230628.01'
+VERSION = '20230702.01'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -339,20 +339,20 @@ class WgetArgs(object):
             wget_args.extend(['--warc-header', 'x-wget-at-project-item-name: '+item_name])
             wget_args.append('item-name://'+item_name)
             item_type, item_value = item_name.split(':', 1)
-            if item_type in ['b', 'ba', 'a', 'v']:
+            if item_type in ['blog', 'article', 'album', 'vlog']:
                 raise Exception('Skipping item type "{}" during discovery phase.'.format(item_type))
             # user serial number
-            elif item_type == 'sn':
-                assert re.search(r'^[1-9]+[0-9]{7,8}$', item_value), item_value
+            if item_type == 'user-sn':
+                assert re.search(r'^[1-9][0-9]{7,8}$', item_value), item_value
                 wget_args.extend(['--warc-header', 'xuite-user-sn: '+item_value])
                 wget_args.append('https://avatar.xuite.net/'+item_value)
             # user
-            elif item_type == 'u':
+            elif item_type == 'user':
                 assert re.search(r'^[0-9A-Za-z._]+$', item_value), item_value
                 wget_args.extend(['--warc-header', 'xuite-user-id: '+item_value])
                 wget_args.append('https://m.xuite.net/home/'+item_value)
             # blog
-            elif item_type == 'b':
+            elif item_type == 'blog':
                 if item_value.count(':') == 1:
                     user_id, blog_url = item_value.split(':')
                 elif item_value.count(':') == 2:
@@ -367,7 +367,7 @@ class WgetArgs(object):
                 wget_args.append('https://blog.xuite.net/{}/{}'.format(user_id, blog_url))
                 wget_args.append('https://m.xuite.net/blog/{}/{}'.format(user_id, blog_url))
             # blog article
-            elif item_type == 'ba':
+            elif item_type == 'article':
                 if item_value.count(':') == 2:
                     user_id, blog_url, article_id = item_value.split(':')
                 elif item_value.count(':') == 3:
@@ -384,7 +384,7 @@ class WgetArgs(object):
                 wget_args.append('https://blog.xuite.net/{}/{}/{}'.format(user_id, blog_url, article_id))
                 wget_args.append('https://m.xuite.net/blog/{}/{}/{}'.format(user_id, blog_url, article_id))
             # album
-            elif item_type == 'a':
+            elif item_type == 'album':
                 assert item_value.count(':') == 1, item_value
                 user_id, album_id = item_value.split(':')
                 assert re.search(r'^[0-9A-Za-z._]+$', user_id), user_id
@@ -393,7 +393,7 @@ class WgetArgs(object):
                 wget_args.append('https://photo.xuite.net/{}/{}'.format(user_id, album_id))
                 wget_args.append('https://m.xuite.net/photo/{}/{}'.format(user_id, album_id))
             # vlog
-            elif item_type == 'v':
+            elif item_type == 'vlog':
                 assert base64.b64decode(item_value, None, True), item_value
                 decoded_FILE_NAME = base64.standard_b64decode(item_value).decode()
                 media_id = re.search(r'^(?:c_)?(?:[0-9A-Za-z]{31}|[0-9A-Za-z]{6})-([0-9]+)\.(?:flv|mp4)$', decoded_FILE_NAME)
@@ -444,11 +444,11 @@ class WgetArgs(object):
                 # if SoundUrl:
                 #     wget_args.append(SoundUrl)
             # keyword
-            elif item_type == 'kw':
+            elif item_type == 'keyword':
                 assert re.search(r'^[^?&=\x00-\x1F\x80-\xFF]+$', item_value), item_value
                 wget_args.append('https://m.xuite.net/rpc/search?method=nickname&kw={}&offset=1&limit=30'.format(item_value))
             else:
-                raise ValueError('Unknown embed: '+item_value)
+                raise ValueError('Unknown item type: '+item_type)
 
         item['item_name_newline'] = item['item_name'].replace('\0', '\n')
 
