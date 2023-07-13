@@ -777,6 +777,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://my.xuite.net/service/friend/api/external/friendList.php?sn="..item_value.."&listType=friend&withGroup=true&callback=addFriendList&rnd="..TSTAMP)
       check("https://my.xuite.net/service/account/api/external/sn_name.php?sn="..item_value.."&callback="..EXPANDO.."_"..TSTAMP.."&_="..TSTAMP)
       check("https://blog.xuite.net/_theme/snapshot/snapshot_avatar.php?mid="..item_value)
+      local sn_hash = md5.sumhexa(item_value)
+      for _, asset_name in pairs({ "photo.jpg", "avatar.jpg" }) do
+        for _, sn_prefix in pairs({ (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"), (sn_hash[1].."/"..sn_hash[2].."/"..sn_hash[3].."/"..sn_hash[4].."/") }) do
+          check("https://" .. sn_hash[1] .. ".blog.xuite.net/" .. sn_prefix .. asset_name)
+        end
+      end
       check(url .. "/s")
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/snapshot/snapshot_avatar%.php%?mid=[0-9]+$") then
       local user_sn = string.match(url, "^https?://blog%.xuite%.net/_theme/snapshot/snapshot_avatar%.php%?mid=([0-9]+)$")
@@ -1238,6 +1244,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             .. "&user_id=" .. user_id
             .. "&blog_pw="
           )
+          local sn_hash = md5.sumhexa(string.format("%.0f", discovered_data["uid"][user_id]))
+          for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
+            for _, sn_prefix in pairs({ (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"), (sn_hash[1].."/"..sn_hash[2].."/"..sn_hash[3].."/"..sn_hash[4].."/") }) do
+              check("https://" .. sn_hash[1] .. ".blog.xuite.net/" .. sn_prefix .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
+            end
+          end
           if string.len(blog["thumb"]) >= 1 then
             check(blog["thumb"])
           end
@@ -1573,6 +1585,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           .. "&mid=" .. Mmid
           .. "&ga=" .. TSTAMP
         , url)
+      end
+      if string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$") then
+        for _, asset_name in pairs({ "cover.jpg", "cover200.jpg", "cover400.jpg", "cover600.jpg" }) do
+          check(url .. "/" .. asset_name)
+        end
       end
     -- article:pc:_theme
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/ArticleDetailCounterExp%.php%?") then
