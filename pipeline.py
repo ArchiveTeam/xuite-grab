@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230808.03'
+VERSION = '20230808.04'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -444,6 +444,10 @@ class WgetArgs(object):
             elif item_type == 'keyword':
                 assert re.search(r'^[^?&=\x00-\x1F\x80-\xFF]+$', item_value), item_value
                 wget_args.append('https://m.xuite.net/rpc/search?method=nickname&kw={}&offset=1&limit=30'.format(item_value))
+            # asset
+            elif item_type == 'asset':
+                assert re.search(r'^https?%3A%2F%2F', item_value), item_value
+                wget_args.append(urllib.parse.unquote(item_value))
             else:
                 raise ValueError('Unknown item type: '+item_type)
 

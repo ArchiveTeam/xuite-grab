@@ -111,7 +111,7 @@ discover_user = function(sn, uid)
 end
 
 discover_blog = function(uid, burl, bid)
-  assert(string.match(uid, "^[0-9A-Za-z._]+$"))  
+  assert(string.match(uid, "^[0-9A-Za-z._]+$"))
   -- assert(string.match(burl, "^[0-9A-Za-z]+$")) -- accept malformed blog URLs
   discover_item(discovered_items, "blog:" .. uid .. ":" .. burl)
   if type(bid) == "string" then
@@ -216,6 +216,21 @@ find_item = function(url)
     end
     type_ = "keyword"
   end
+  if not value then
+    for _, pattern in pairs({
+      "^https?://[0-9a-f]%.blog%.xuite%.net/",
+      "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/",
+      "^https?://[0-9a-f]%.photo%.xuite%.net/",
+      "^https?://[0-9a-f]%.share%.photo%.xuite%.net/",
+      "^https?://vlog%.xuite%.net/media/"
+    }) do
+      value = string.match(url, pattern)
+      if value then
+        break
+      end
+    end
+    type_ = "asset"
+  end
   if value then
     return {
       ["value"]=value,
@@ -310,7 +325,14 @@ allowed = function(url, parenturl)
     ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)%?vt=[01]$"]="user",
     ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="vlog",
-    ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog"
+    ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog",
+    ["^(https?://[0-9a-f]%.blog%.xuite%.net/.+)$"]="asset",
+    ["^(https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+)$"]="asset",
+    ["^(https?://[0-9a-f]%.photo%.xuite%.net/.+)$"]="asset",
+    ["^https?://o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/"]="album",
+    ["^(https?://[0-9a-f]%.share%.photo%.xuite%.net/.+)$"]="asset",
+    ["^(https?://vlog%.xuite%.net/media/.+)$"]="asset",
+    ["^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/video/[0-9A-Za-z.][0-9A-Za-z._]*/([0-9A-Za-z=]+)%?"]="vlog"
   }) do
     local match = nil
     local other1 = nil
@@ -343,6 +365,8 @@ allowed = function(url, parenturl)
         match = match .. ":" .. other1
       elseif type_ == "vlog" then
         match = discover_vlog(match)
+      elseif type_ == "asset" then
+        match = urlcode.escape(match)
       end
       local new_item = type_ .. ":" .. match
       if new_item ~= item_name then
@@ -388,7 +412,7 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://events%.xuite%.net/")
     or string.match(url, "^https?://wms%.map%.xuite%.net/")
     or string.match(url, "^https?://town%.xuite%.net/")
-    -- api
+    -- API
     or string.match(url, "^https?://api%.xuite%.net/api%.php%?")
     or string.match(url, "^https?://api%.xuite%.net/oembed/%?")
     or (string.match(url, "^https?://blog%.xuite%.net/_theme/[A-Za-z]+%.php%?") and not string.match(url, "^https?://blog%.xuite%.net/_theme/GAExp%.php%?"))
@@ -408,15 +432,9 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://vlog.xuite.net/flash/player%?media=[0-9A-Za-z=]+$")
     or string.match(url, "^https?://vlog.xuite.net/flash/audioplayer%?media=[0-9A-Za-z=]+$")
     or string.match(url, "^https?://my%.xuite%.net/api/visitor2xml%.php%?")
-    -- TODO: optionally split some images (except o.[0-9a-f].photo.xuite.net and [0-9a-f].mms.vlog.xuite.net) into items
-    or string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
-    or string.match(url, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/")
-    or string.match(url, "^https?://[0-9a-f]%.photo%.xuite%.net/")
+    -- Original resolution photos require a valid Referer header
     or string.match(url, "^https?://o%.[0-9a-f]%.photo%.xuite%.net/")
-    or string.match(url, "^https?://[0-9a-f]%.share%.photo%.xuite%.net/")
-    -- TODO: Xuite does load balancing by randomly returning one of the 16 hostnames,
-    -- but they all return the same video. if we remove duplicate URLs and request only once,
-    -- there will be a mismatch between the HTML and the downloaded video ...
+    -- Vlog files require a valid session key
     or string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/") then
     return true
   end
@@ -851,7 +869,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local user_id = string.match(url, "^https?://blog%.xuite%.net/_theme/member_data%.php%?.+&lid=([0-9A-Za-z._]+).+&callback=WIDGET%.AVATAR%.processDesc")
       html = read_file(file)
       local json = JSON:decode(string.match(html, "^WIDGET%.AVATAR%.processDesc%((.+)%);$"))
-      -- TODO: this api sometimes returns invalid XML characters or non-UTF8 characters, so don't use xml2lua.
+      -- TODO: this API sometimes returns invalid XML characters or non-UTF8 characters, so don't use xml2lua.
       -- how to filter out XML CDATA without xml2lua if someone put "<blog>//blog.xuite.net/..." in their introduction?
       local sn = string.match(json, "    <pic>//avatar%.xuite%.net/([0-9]+)/s</pic>")
       local uid = string.match(json, "  <blog>//blog%.xuite%.net/([0-9A-Za-z._]+)</blog>")
@@ -1853,6 +1871,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             discover_user(sn, uid)
           end
         end
+      end
+    -- vlog:file
+    elseif string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/.+$") then
+      -- Let URL-agnostic deduplication happens
+      local vlog_suffix = string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/(.+)$")
+      for i in 0, 15, 1 do
+        check(string.format("https://%x.mms.vlog.xuite.net/", i) .. vlog_suffix)
       end
     end
   end
