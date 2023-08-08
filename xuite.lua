@@ -980,7 +980,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         for _, album in pairs(json["albums"]) do
           discover_album(json["user_id"], album["album_id"])
           check("https://photo.xuite.net/_category?st=cat&uid=" .. json["user_id"] .. "&sk=" .. album["category_id"])
-        end          
+        end
       end
     elseif string.match(url, "^https?://m%.xuite%.net/rpc/photo%?method=loadAlbums&userId=[0-9A-Za-z._]+&limit=12&offset=[0-9]+&sk=&p=$") then
       local user_id, offset = string.match(url, "^https?://m%.xuite%.net/rpc/photo%?method=loadAlbums&userId=([0-9A-Za-z._]+)&limit=12&offset=([0-9]+)&sk=&p=$")
@@ -1782,10 +1782,24 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if string.match(url, "method=xuite%.photo%.public%.getPhotos&") and json["ok"] then
         local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
         local album_id = string.match(url, "&album_id=([0-9]+)")
+        local start = string.match(url, "&start=([0-9]+)")
         for _, photo in pairs(json["rsp"]["photos"]) do
           assert(string.match(photo["position"], "^[0-9]+$"))
           local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
           check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", referer)
+        end
+        if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and #json["rsp"]["photos"] >= 1 then
+          start = string.format("%.0f", tonumber(start) + 500)
+          check(
+            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. album_id .. xuite_api_key .. "500" .. "xuite.photo.public.getPhotos" .. "" .. start .. user_id)
+            .. "&method=xuite.photo.public.getPhotos"
+            .. "&user_id=" .. user_id
+            .. "&album_id=" .. album_id
+            .. "&pw="
+            .. "&start=" .. start
+            .. "&limit=" .. "500"
+          )
         end
       end
     end
