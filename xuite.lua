@@ -4,8 +4,6 @@ local http = require("socket.http")
 local https = require("ssl.https")
 local xml2lua = require("xml2lua.xml2lua")
 local xmlhandler = require("xml2lua.xmlhandler.tree")
-local base64 = require("base64")
-local md5 = require("md5")
 JSON = (loadfile "JSON.lua")()
 JSObj = (loadfile "JSObj.lua")()
 
