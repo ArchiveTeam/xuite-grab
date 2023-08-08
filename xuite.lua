@@ -35,16 +35,7 @@ local new_locations = {}
 
 local discovered_outlinks = {}
 local discovered_items = {}
-local discovered_data = {
-  ["uid"] = {},
-  ["uid-mal"] = {},
-  ["blog"] = {},
-  ["album"] = {},
-  ["vlog"] = {},
-  ["dir"] = {},
-  ["pl"] = {},
-  ["embed"] = {}
-}
+local discovered_data = {}
 local bad_items = {}
 local ids = {}
 
@@ -63,46 +54,6 @@ for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore:gsub("^https://", "http://")] = true
   downloaded[ignore:gsub("^http://", "https://")] = true
 end
-
--- split_utf8_str = function(utf8_str)
---   local substrs = { [utf8_str] = true }
---   for _, set in pairs({
---     utf8_str:gmatch("([\224-\239][\128-\191][\128-\191][\224-\239][\128-\191][\128-\191][\224-\239][\128-\191][\128-\191][\224-\239][\128-\191][\128-\191])"), -- 文文文文
---     utf8_str:gmatch("([\224-\239][\128-\191][\128-\191][\224-\239][\128-\191][\128-\191][\224-\239][\128-\191][\128-\191])"), -- 文文文
---     utf8_str:gmatch("([\224-\239][\128-\191][\128-\191][\224-\239][\128-\191][\128-\191])"), -- 文文
---     utf8_str:gmatch("([\32-\127][\32-\127][\224-\239][\128-\191][\128-\191])"), -- NN文
---     utf8_str:gmatch("([\32-\127][\224-\239][\128-\191][\128-\191][\32-\127])"), -- N文N
---     utf8_str:gmatch("([\224-\239][\128-\191][\128-\191][\32-\127][\32-\127])"), -- 文NN
---     utf8_str:gmatch("([\32-\127][\224-\239][\128-\191][\128-\191])"), -- N文
---     utf8_str:gmatch("([\224-\239][\128-\191][\128-\191][\32-\127])"), -- 文N
---     utf8_str:gmatch("([\224-\239][\128-\191][\128-\191])"), -- 文
---     utf8_str:gmatch("([\32-\127]+)"), -- N+
---   }) do
---     for substr in set do
---       substrs[substr] = true
---     end
---   end
---   return substrs
--- end
-
--- A lightweight table_show: https://stackoverflow.com/a/47392487
--- tprint = function(t, s)
---   for k, v in pairs(t) do
---     local kfmt = '["' .. tostring(k) ..'"]'
---     if type(k) ~= 'string' then
---       kfmt = '[' .. k .. ']'
---     end
---     local vfmt = '"'.. tostring(v) ..'"'
---     if type(v) == 'table' then
---       tprint(v, (s or '')..kfmt)
---     else
---       if type(v) ~= 'string' then
---         vfmt = tostring(v)
---       end
---       print(type(t)..(s or '')..kfmt..' = '..vfmt)
---     end
---   end
--- end
 
 abort_item = function(item)
   abortgrab = true
@@ -152,20 +103,20 @@ discover_user = function(sn, uid)
   discover_item(discovered_items, "user:" .. uid)
   if type(sn) == "string" then
     assert(string.match(sn, "^[0-9]+$"))
-    discovered_data["uid"][uid] = sn
     discover_item(discovered_items, "user-sn:" .. sn)
+    discover_item(discovered_data, "user," .. sn .. "," .. uid)
   else
     assert(sn == nil)
   end
 end
 
 discover_blog = function(uid, burl, bid)
-  assert(string.match(uid, "^[0-9A-Za-z._]+$"))
-  assert(string.match(burl, "^[0-9A-Za-z]+$"))
+  assert(string.match(uid, "^[0-9A-Za-z._]+$"))  
+  -- assert(string.match(burl, "^[0-9A-Za-z]+$")) -- accept malformed blog URLs
   discover_item(discovered_items, "blog:" .. uid .. ":" .. burl)
   if type(bid) == "string" then
     assert(string.match(bid, "^[0-9]+$"))
-    discovered_data["blog"][uid .. ":" .. burl .. ":" .. bid] = true
+    discover_item(discovered_data, "blog," .. bid .. "," .. uid .. "," .. burl)
   else
     assert(bid == nil)
   end
@@ -181,7 +132,6 @@ end
 discover_album = function(uid, aid)
   assert(string.match(uid, "^[0-9A-Za-z._]+$"))
   assert(string.match(aid, "^[0-9]+$"))
-  discovered_data["album"][aid] = uid
   discover_item(discovered_items, "album:" .. uid .. ":" .. aid)
 end
 
@@ -189,8 +139,9 @@ discover_vlog = function(vlogid)
   assert(string.match(vlogid, "^[0-9A-Za-z=]+$"))
   -- generate correctly padded canonical vlogid
 	vlogid = #vlogid % 4 == 2 and (vlogid .. '==') or #vlogid % 4 == 3 and (vlogid .. '=') or vlogid
-  discovered_data["vlog"][vlogid] = string.match(base64.decode(vlogid), "%-([0-9]+)%.[0-9a-z]+$")
+  local mediaid = string.match(base64.decode(vlogid), "%-([0-9]+)%.[0-9a-z]+$")
   discover_item(discovered_items, "vlog:" .. vlogid)
+  discover_item(discovered_data, "vlog," .. mediaid .. "," .. vlogid)
   return vlogid
 end
 
@@ -545,14 +496,14 @@ allowed = function(url, parenturl)
       or string.match(url, "%.php$") or string.match(url, "%.php%?[^?]*$") then
       return true
     elseif string.match(url, "%.swf$") or string.match(url, "%.swf%?[^?]*$") then
-      -- TODO: inspect the collected data.txt to discover FlashVars rules
+      -- TODO: inspect the collected xuite-data backfeed to discover FlashVars rules
       print("Found swf " .. url)
-      discovered_data["embed"][url] = true
+      discover_item(discovered_data, "embed," .. urlcode.escape(url))
       return false
     else
       -- TODO: can we throw the rest into URLs?
       -- are they guaranteed to be downloaded before the deadline?
-      -- can we collect these urls to analyze the patterns?
+      discover_item(discovered_data, "other," .. urlcode.escape(url))
       discover_item(discovered_outlinks, url)
       return false
     end
@@ -608,8 +559,9 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   return false
 end
 
-local user_ids = {}
-local blog_urls = {}
+local user_sn_tbl = {}
+local user_id_tbl = {}
+local blog_url_tbl = {}
 
 wget.callbacks.get_urls = function(file, url, is_css, iri)
   local urls = {}
@@ -847,6 +799,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if sn and uid then
         assert(uid == item_value)
         discover_user(sn, uid)
+        user_sn_tbl[uid] = sn
       end
       check("https://photo.xuite.net/_feed/album?user_id=" .. item_value)
       check(
@@ -939,7 +892,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       if sn then
         assert(uid == user_id)
-        user_ids[sn] = uid
+        user_id_tbl[sn] = uid
         -- user:album:tag 天邊一朵雲
         -- https://photo.xuite.net/_category?
         -- https://s.photo.xuite.net/static/tag_js/tag_js_config.js
@@ -1004,9 +957,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           assert(string.match(tag["sn"], "^[0-9]+$"), tag["sn"])
           assert(string.match(tag["tagid"], "^[0-9a-f]+$"), tag["tagid"])
           assert(tag["link"] == "//photo.xuite.net/_category?sn=" .. tag["sn"] .. "&tagid=" .. tag["tagid"], tag["link"])
-          assert(user_ids[tag["sn"]], tag["sn"])
+          assert(user_id_tbl[tag["sn"]], tag["sn"])
           check("https:" .. tag["link"])
-          check("https://m.xuite.net/photo/" .. user_ids[tag["sn"]] .. "?t=tag&p=" .. tag["tagid"])
+          check("https://m.xuite.net/photo/" .. user_id_tbl[tag["sn"]] .. "?t=tag&p=" .. tag["tagid"])
         end
       end
     elseif string.match(url, "^https?://m%.xuite%.net/photo/[0-9A-Za-z._]+%?t=tag&p=[0-9a-f]+$") then
@@ -1132,7 +1085,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https:" .. thumb, url)
       end
       for plid in string.gmatch(html, "<a class=\"vloglist%-video%-thumb\" href=\"//vlog%.xuite%.net/_playlist/play%?plid=([0-9]+)\">") do
-        discovered_data["pl"][plid] = user_id
+        discover_item(discovered_data, "playlist," .. plid .. "," .. user_id)
         check("https://vlog.xuite.net/_pub/conf_playlist_v2.php?plid=" .. plid)
         check("https://vlog.xuite.net/flash/playlist?plid=" .. plid)
         check("https://vlog.xuite.net/_playlist/play?plid=" .. plid)
@@ -1242,7 +1195,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             .. "&user_id=" .. user_id
             .. "&blog_pw="
           )
-          local sn_hash = md5.sumhexa(string.format("%.0f", discovered_data["uid"][user_id]))
+          local sn_hash = md5.sumhexa(user_sn_tbl[user_id])
           for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
             for _, sn_prefix in pairs({ (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"), (sn_hash[1].."/"..sn_hash[2].."/"..sn_hash[3].."/"..sn_hash[4].."/") }) do
               check("https://" .. sn_hash[1] .. ".blog.xuite.net/" .. sn_prefix .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
@@ -1321,7 +1274,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           assert(json["rsp"]["total"] == #json["rsp"]["dirs"])
           for _, dir in pairs(json["rsp"]["dirs"]) do
             assert(string.match(dir["dir_id"], "^[0-9]+$"))
-            discovered_data["dir"][dir["dir_id"]] = user_id
+            discover_item(discovered_data, "directory," .. dir["dir_id"] .. "," .. user_id)
             check(
               "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
               .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. dir["dir_id"] .. "xuite.vlog.public.getVlogsByDir" .. user_id)
@@ -1349,7 +1302,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           or string.match(embed, "//[^/]*xuite%.com/")
           or string.match(embed, "//[^/]*xuite%.tw/")
           or string.match(embed, "^/[^/]") then
-          discovered_data["embed"][url] = true
+          discover_item(discovered_data, "embed," .. urlcode.escape(url))
         end
       end
       -- https://blog.xuite.net/_public/js/blog_01.js TemplateJS.item_main.main()
@@ -1541,8 +1494,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         assert(Ma_author_id == Ta_author_id)
         assert(Tb_login == user_id)
         assert(Tb_url == blog_url)
-        user_ids[Muid] = user_id
-        blog_urls[Mbid] = blog_url
+        user_id_tbl[Muid] = user_id
+        blog_url_tbl[Mbid] = blog_url
         -- function getArticleDetailCounter(json){}
         check(
           "https://blog.xuite.net/_theme/ArticleDetailCounterExp.php"
@@ -1597,8 +1550,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(type(json[1]["counter"]) == "number")
       assert(json[1]["article_id"] == article_id)
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/MessageShowExp%.php%?") then
-      local user_id = user_ids[string.match(url, "&uid=([0-9]+)")]
-      local blog_url = blog_urls[string.match(url, "&bid=([0-9]+)")]
+      local user_id = user_id_tbl[string.match(url, "&uid=([0-9]+)")]
+      local blog_url = blog_url_tbl[string.match(url, "&bid=([0-9]+)")]
       html = read_file(file)
       local json = JSON:decode(html)
       for aid,bid,uid,a_author_id,index in string.gmatch(json["message"]["content"], "<a href=\"javascript:Message%(([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)%)\" >") do
@@ -1980,8 +1933,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
               if sn and uid then
                 discover_user(sn, uid)
               else
-                print("Ignore malformed user " .. item["sn"] .. ":" .. item["uid"])
-                discovered_data["uid-mal"][item["uid"]] = item["sn"]
+                local item_name = string.format("%.0f", item["sn"]) .. ":" .. urlcode.escape(item["uid"])
+                print("Ignore malformed user " .. item_name)
+                discover_item(discovered_data, "user-malformed:" .. item_name)
               end
             end
           else
@@ -2222,36 +2176,9 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
   end
   file:close()
 
-  file = io.open(item_dir..'/'..warc_file_base..'_data.txt', 'w')
-  for uid, sn in pairs(discovered_data["uid"]) do
-    file:write("u," .. sn .. "," .. uid .. "\n")
-  end
-  for uid, sn in pairs(discovered_data["uid-mal"]) do
-    file:write("ux," .. sn .. "," .. uid .. "\n")
-  end
-  for item, _ in pairs(discovered_data["blog"]) do
-    local uid, burl, bid = string.match(item, "([^:]+):([^:]+):([^:]+)")
-    file:write("b," .. bid .. "," .. uid .. "," .. burl .. "\n")
-  end
-  for aid, uid in pairs(discovered_data["album"]) do
-    file:write("a," .. aid .. "," .. uid .. "\n")
-  end
-  for vlogid, mediaid in pairs(discovered_data["vlog"]) do
-    file:write("v," .. mediaid .. "," .. vlogid .. "\n")
-  end
-  for dir_id, uid in pairs(discovered_data["dir"]) do
-    file:write("d," .. dir_id .. "," .. uid .. "\n")
-  end
-  for plid, uid in pairs(discovered_data["pl"]) do
-    file:write("p," .. plid .. "," .. uid .. "\n")
-  end
-  for item, _ in pairs(discovered_data["embed"]) do
-    file:write("e," .. item .. "\n")
-  end
-  file:close()
-
   for key, data in pairs({
     ["xuite-0000000000000000"] = discovered_items,
+    ["xuite-data-0000000000000000"] = discovered_data,
     ["urls-0000000000000000"] = discovered_outlinks
   }) do
     print('queuing for', string.match(key, "^(.+)%-"))

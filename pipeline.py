@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230808.02'
+VERSION = '20230808.03'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -196,7 +196,6 @@ class PrepareDirectories(SimpleTask):
         ])
 
         open('%(item_dir)s/%(warc_file_base)s.warc.zst' % item, 'w').close()
-        open('%(item_dir)s/%(warc_file_base)s_data.txt' % item, 'w').close()
 
 class MoveFiles(SimpleTask):
     def __init__(self):
@@ -205,8 +204,6 @@ class MoveFiles(SimpleTask):
     def process(self, item):
         os.rename('%(item_dir)s/%(warc_file_base)s.warc.zst' % item,
               '%(data_dir)s/%(warc_file_base)s.%(dict_project)s.%(dict_id)s.warc.zst' % item)
-        os.rename('%(item_dir)s/%(warc_file_base)s_data.txt' % item,
-              '%(data_dir)s/%(warc_file_base)s_data.txt' % item)
 
         shutil.rmtree('%(item_dir)s' % item)
 
@@ -500,7 +497,6 @@ pipeline = Pipeline(
         file_groups={
             'data': [
                 ItemInterpolation('%(item_dir)s/%(warc_file_base)s.warc.zst'),
-                ItemInterpolation('%(item_dir)s/%(warc_file_base)s_data.txt'),
             ]
         },
         id_function=stats_id_function,
@@ -515,7 +511,6 @@ pipeline = Pipeline(
             version=VERSION,
             files=[
                 ItemInterpolation('%(data_dir)s/%(warc_file_base)s.%(dict_project)s.%(dict_id)s.warc.zst'),
-                ItemInterpolation('%(data_dir)s/%(warc_file_base)s_data.txt'),
             ],
             rsync_target_source_path=ItemInterpolation('%(data_dir)s/'),
             rsync_extra_args=[
