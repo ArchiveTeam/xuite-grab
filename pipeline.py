@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230808.04'
+VERSION = '20230809.01'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -402,48 +402,16 @@ class WgetArgs(object):
                 assert re.search(r'^(?:[0-9a-f]/){4}[0-9a-f]{28}/[0-9A-Za-z=]+/[1-9][0-9]*[A-Z]\.jpg$', item_value), item_value
                 wget_args.extend(['--warc-header', 'xuite-pic-thumb: '+item_value])
                 wget_args.append('https://pic.xuite.net/thumb/'+item_value)
-            # embedded swf
-            elif item_type == 'embed':
-                raise NotImplementedError('TODO: rewrite in lua')
-                # item_url = item_value
-                # if item_url[0:2] == '//':
-                #     item_url = 'https:' + item_url
-                # re_mtv = re.search(r'^https?://blog\.xuite\.net/_service/mtv/swf/main\.swf\?xml_url=(//[^?=]+flash_config\.xml)&server_url=[^?=]+&service_url=[^?=]+&ImageUrl=([^?=]+)&SoundUrl=([^?=]+)&act=show', item_url)
-                # re_paint = re.search(r'^https?://blog\.xuite\.net/_service/paint/swf/show\.swf\?xml_url=(//[^?=]+flash_config\.xml)&server_url=[^?=]+&service_url=[^?=]+&act=show', item_url)
-                # re_slideshow = re.search(r'^https?://blog\.xuite\.net/_service/slideshow/swf/main\.swf\?xml_url=(//[^?=]+flash_config\.xml)&server_url=[^?=]+&service_url=[^?=]+&ImageUrl=([^?=]+)&act=show', item_url)
-                # re_wall = re.search(r'^https?://blog\.xuite\.net/_service/wall/swf/main\.swf\?xml_url=(//[^?=]+flash_config\.xml)&server_url=[^?=]+&service_url=[^?=]+&ImageUrl=([^?=]+)&act=show(?:&nocache=[0-9]+)?', item_url)
-                # xml_url, ImageUrl, SoundUrl = None, None, None
-                # if re_mtv:
-                #     xml_url = re_mtv[1]
-                #     ImageUrl = re_mtv[2]
-                #     SoundUrl = re_mtv[3]
-                # elif re_paint:
-                #     xml_url = re_paint[1]
-                # elif re_slideshow:
-                #     xml_url = re_slideshow[1]
-                #     ImageUrl = re_slideshow[2]
-                # elif re_wall:
-                #     # TODO: get images referenced by flash_config.xml
-                #     xml_url = re_wall[1]
-                # elif re.search(r'^https?://vlog\.xuite\.net/_(?:a|v)[0-9]*/[0-9A-Za-z=]+', item_url):
-                #     pass
-                # else:
-                #     raise Exception('Not implemented yet')
-                # if xml_url:
-                #     if xml_url[0:2] == '//':
-                #         xml_url = 'https:' + xml_url
-                #     elif xml_url[0] == '/':
-                #         xml_url = 'https://blog.xuite.net' + xml_url
-                #     wget_args.append(xml_url)
-                # if ImageUrl:
-                #     for image in ImageUrl.split(','):
-                #         wget_args.append(image)
-                # if SoundUrl:
-                #     wget_args.append(SoundUrl)
             # keyword
             elif item_type == 'keyword':
                 assert re.search(r'^[^?&=\x00-\x1F\x80-\xFF]+$', item_value), item_value
                 wget_args.append('https://m.xuite.net/rpc/search?method=nickname&kw={}&offset=1&limit=30'.format(item_value))
+            # embedded swf
+            elif item_type == 'embed':
+                assert re.search(r'^https?%3A%2F%2F', item_value), item_value
+                if not re.search(r'\.[Ss][Ww][Ff](?:\?[^?]+)?$', item_value):
+                    raise NotImplementedError('TODO: handle <embed> other than swf')
+                wget_args.append(urllib.parse.unquote(item_value))
             # asset
             elif item_type == 'asset':
                 assert re.search(r'^https?%3A%2F%2F', item_value), item_value

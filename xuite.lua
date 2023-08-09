@@ -151,6 +151,13 @@ discover_keyword = function(keyword)
   discover_item(discovered_items, "keyword:" .. keyword)
 end
 
+parse_args = function(url)
+  local parsed_url = urlparse.parse(url)
+  local args = {}
+  urlcode.parsequery(parsed_url["query"], args)
+  return args
+end
+
 find_item = function(url)
   local value = string.match(url, "^https?://avatar%.xuite%.net/([0-9]+)$")
   local type_ = "user-sn"
@@ -217,10 +224,18 @@ find_item = function(url)
     type_ = "keyword"
   end
   if not value then
+    value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]$")
+    if not value then
+      value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]%?[^?]+$")
+    end
+    type_ = "embed"
+  end
+  if not value then
     for _, pattern in pairs({
-      "^https?://[0-9a-f]%.blog%.xuite%.net/",
+      "^https?://img%.xuite%.net/",
+      "^https?://[0-9a-fs]%.blog%.xuite%.net/",
       "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/",
-      "^https?://[0-9a-f]%.photo%.xuite%.net/",
+      "^https?://[0-9a-fs]%.photo%.xuite%.net/",
       "^https?://[0-9a-f]%.share%.photo%.xuite%.net/",
       "^https?://vlog%.xuite%.net/media/"
     }) do
@@ -326,9 +341,10 @@ allowed = function(url, parenturl)
     ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog",
-    ["^(https?://[0-9a-f]%.blog%.xuite%.net/.+)$"]="asset",
+    ["^(https?://img%.xuite%.net/.+)$"]="asset",
+    ["^(https?://[0-9a-fs]%.blog%.xuite%.net/.+)$"]="asset",
     ["^(https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+)$"]="asset",
-    ["^(https?://[0-9a-f]%.photo%.xuite%.net/.+)$"]="asset",
+    ["^(https?://[0-9a-fs]%.photo%.xuite%.net/.+)$"]="asset",
     ["^https?://o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/"]="album",
     ["^(https?://[0-9a-f]%.share%.photo%.xuite%.net/.+)$"]="asset",
     ["^(https?://vlog%.xuite%.net/media/.+)$"]="asset",
@@ -376,31 +392,6 @@ allowed = function(url, parenturl)
         return true
       end
     end
-  end
-
-  if string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshow%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshowA%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshowA%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&bgcolor=[0-9A-Fx]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshow%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshow%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&count=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowA%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowB%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowB%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&count=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowM%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowM%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&count=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowMB%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowMB%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&count=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowN%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshow%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowA%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowA%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&count=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowNB%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowNB%.swf%?id=[0-9A-Za-z._]+&album=[0-9]+&count=[0-9]+&etime=[0-9]+&effect=[0-9]+$")
-    or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowMM%.swf%?user_id=[0-9A-Za-z._]+&album_id=[0-9]+$") then
-    local user_id = string.match(url, "%?id=([0-9A-Za-z._]+)") or string.match(url, "%?user_id=([0-9A-Za-z._]+)")
-    local album_id = string.match(url, "&album=([0-9]+)") or string.match(url, "&album_id=([0-9]+)")
-    discover_album(user_id, album_id)
-    return false
   end
 
   if string.match(url, "^https?://blog%.xuite%.net/blog_pwd%.php")
@@ -1082,7 +1073,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       -- $(document).on('click','.vloglist-more',function(e){...});
       -- if string.match(html, "<a class=\"vloglist%-more\" href=\"javascript:void%(0%);\">more</a>") then
       if string.match(html, "class=\"vloglist%-more\"") then
-        error("TODO: More playlist button looks like this. Post this message on IRC. " .. url)
+        error("TODO: More playlist button looks like " .. url .. " . Please post this message on the IRC channel #sweet@irc.hackint.org .")
         local val_offset = string.match(html, "<input type=\"hidden\" class=\"loaded\" value=\"([0-9]*)\">")
         local val_user = string.match(html, "<input type=\"hidden\" class=\"loadeduser\" value=\"([0-9A-Za-z._]+)\">")
         local val_vt = string.match(html, "<input type=\"hidden\" class=\"loadedvt\" value=\"([01])\">")
@@ -1097,7 +1088,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       elseif not new_locations[url] then
         local count = string.match(html, "<div class=\"vloglist%-Subdirectory\"> <span>.*的播放清單%(共 ([0-9]+) 則%)</span> </div>")
         -- TODO: what is the playlist offset?
-        assert(tonumber(count) <= 10, "TODO: playlists less than " .. count .. " have no more button. Post this message on IRC. " .. url)
+        assert(tonumber(count) <= 10, "TODO: playlists less than " .. count .. " have no more button. Please post this message on the IRC channel #sweet@irc.hackint.org .")
       end
       for thumb in string.gmatch(html, "<img src=\"(//vlog%.xuite%.net/media/home[^\"<>]+)\">") do
         check("https:" .. thumb, url)
@@ -1109,7 +1100,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://vlog.xuite.net/_playlist/play?plid=" .. plid)
       end
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&offset=[0-9]+&user=[0-9A-Za-z._]+&vt=1&t=list&p=$") then
-      error("TODO: More playlist looks like this. Post this message on IRC. " .. url)
+      error("TODO: More playlist AJAX looks like " .. url .. " . Please post this message on the IRC channel #sweet@irc.hackint.org .")
       local user_id = string.match(url, "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&offset=[0-9]+&user=([0-9A-Za-z._]+)&vt=1&t=list&p=$")
       html = read_file(file)
       local json = JSON:decode(html)
@@ -1971,9 +1962,92 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
+  if item_type == "embed" then
+    local args = parse_args(url)
+    if string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshow%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshowA%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshow%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowA%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowB%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowM%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowMB%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshowN%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshow%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowA%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowNB%.swf%?")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowMM%.swf%?") then
+      assert(type(args["id"]) == "string" or type(args["user_id"]) == "string")
+      assert(type(args["album"]) == "string" or type(args["album_id"]) == "string")
+      local user_id = args["id"] or args["user_id"]
+      local album_id = args["album"] or args["album_id"]
+      discover_album(user_id, album_id)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/mtv/swf/main%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users")
+      assert(args["service_url"] == "/_service/mtv/")
+      assert(type(args["ImageUrl"]) == "string")
+      assert(type(args["SoundUrl"]) == "string")
+      assert(args["act"] == "show")
+      assert(#args == 6)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/paint/swf/show%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users")
+      assert(args["service_url"] == "/_service/paint/")
+      assert(args["act"] == "show")
+      assert(#args == 4)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/main%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users")
+      assert(args["service_url"] == "/_service/slideshow/")
+      assert(type(args["ImageUrl"]) == "string")
+      assert(args["act"] == "show")
+      assert(#args == 5)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/wall/swf/main%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users")
+      assert(args["service_url"] == "/_service/wall/")
+      assert(type(args["ImageUrl"]) == "string")
+      assert(args["act"] == "show")
+      assert(type(args["nocache"]) == "string" or type(args["nocache"]) == "nil")
+      assert(5 <= #args and #args <= 6)
+    else
+      error("TODO: unknown embedded SWF file: " .. url)
+    end
+    local check_assetUrl = function(url)
+      assert(string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
+        or string.match(url, "^https?://mms%.blog%.xuite%.net/"), url)
+      check(url)
+      if string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/")
+        or string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f][0-9a-f]/[0-9a-f][0-9a-f]/") then
+        local relative_path = string.match(url, "^https?://mms%.blog%.xuite%.net(/[0-9a-f].+)$")
+        local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
+        check(urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path))
+      end      
+    end
+    if type(args["xml_url"]) == "string" then
+      assert(string.match(args["xml_url"], "^//.+/flash_config%.xml$"))
+      check(urlparse.absolute("http://blog.xuite.net/", args["xml_url"]))
+    end
+    if type(args["ImageUrl"]) == "string" then
+      for image in string.gmatch(args["ImageUrl"], "[^,]+") do
+        check_assetUrl(image)
+      end
+    end
+    if type(args["SoundUrl"]) == "string" then
+      assert(select(2, string.gsub(args["SoundUrl"], ",")) == 0)
+      check_assetUrl(args["SoundUrl"])
+    end
+  end
+
+  if item_type == "asset" then
+    if string.match(url, "/flash_config%.xml$") then
+      error("TODO: get images referenced by flash_config.xml")
+    end
+  end
+
   if allowed(url)
     and status_code < 300
-    -- TODO: try reading header["Content-Type"] to avoid parsing binaries!
+    -- avoid parsing binaries
     and not string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
     and not string.match(url, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/")
     and not string.match(url, "^https?://[0-9a-f]%.photo%.xuite%.net/")
