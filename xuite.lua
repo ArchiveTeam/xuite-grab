@@ -218,6 +218,7 @@ find_item = function(url)
     for _, pattern in pairs({
       "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://img%.xuite%.net/.+$",
+      "^https?://blog%.xuite%.net/_service/slideshow/mp3/",
       "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://[0-9a-fs]%.blog%.xuite%.net/.+$",
       "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+$",
@@ -227,6 +228,19 @@ find_item = function(url)
     }) do
       value = string.match(url, pattern)
       if value then
+        if string.match(value, "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/") then
+          local sn_hash_prefix = string.match(value, "^https?://blog%.xuite%.net/_users/([0-9a-f]).+$")
+          value = value:gsub("^https?://blog%.xuite%.net/_users/", "http://" .. sn_hash_prefix .. ".blog.xuite.net/", 1)
+        elseif string.match(value, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/") then
+          value = value:gsub("%.mms%.blog%.xuite%.net/", ".blog.xuite.net/", 1)
+        end
+        if string.match(value, "^https?://[0-9a-f]%.blog%.xuite%.net/[0-9a-f][0-9a-f]/[0-9a-f][0-9a-f]/") then
+          local sn_hash = string.match(value, "^https?://[0-9a-f]%.blog%.xuite%.net/([0-9a-f][0-9a-f]/[0-9a-f][0-9a-f])/")
+          value = value:gsub(sn_hash, sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(4,4).."/"..sn_hash:sub(5,5), 1)
+        end
+        if string.match(value, "^https?://[0-9a-f]%.blog%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/") then
+          value = value:gsub("^https", "http", 1)
+        end
         value = urlcode.escape(value)
         break
       end
@@ -328,12 +342,13 @@ allowed = function(url, parenturl)
     ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog",
-    ["^(https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
+    ["^(https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^https?://pic%.xuite%.net/thumb/(.+)$"]="pic-thumb",
     ["^(https?://img%.xuite%.net/.+)$"]="asset",
-    ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
+    ["^(https?://blog%.xuite%.net/_service/slideshow/mp3/.+)$"]="asset",
+    ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^(https?://[0-9a-fs]%.blog%.xuite%.net/.+)$"]="asset",
-    ["^(https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
+    ["^(https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^(https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+)$"]="asset",
     ["^(https?://[0-9a-fs]%.photo%.xuite%.net/.+)$"]="asset",
     ["^https?://o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/"]="album",
@@ -373,17 +388,26 @@ allowed = function(url, parenturl)
       elseif type_ == "vlog" then
         match = discover_vlog(match)
       elseif type_ == "asset" then
-        if string.match(url, "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
-          -- also use [0-9a-f].blog.xuite.net
-          local relative_path = string.match(url, "^https?://pic%.xuite%.net(/[0-9a-f].+)$")
-          local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
-          discover_item(discovered_items, "asset:" .. urlcode.escape(urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path)))
-        elseif string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
-          -- use [0-9a-f].mms.blog.xuite.net instead
-          local relative_path = string.match(url, "^https?://mms%.blog%.xuite%.net(/[0-9a-f].+)$")
-          local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
-          match = urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path)
-          match = urlparse.absolute("http://" .. sn_hash_prefix .. ".mms.blog.xuite.net/", relative_path)
+        if string.match(match, "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
+          discover_item(discovered_items, "asset:" .. urlcode.escape(match))
+          -- also use blog.xuite.net/_users
+          match = match:gsub("^https?://pic%.xuite%.net/", "http://blog.xuite.net/_users/", 1)
+        elseif string.match(match, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
+          -- don't use mms.blog.xuite.net but use blog.xuite.net/_users instead
+          match = match:gsub("^https?://mms%.blog%.xuite%.net/", "http://blog.xuite.net/_users/", 1)
+        end
+        if string.match(match, "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/") then
+          local sn_hash_prefix = string.match(match, "^https?://blog%.xuite%.net/_users/([0-9a-f]).+$")
+          match = match:gsub("^https?://blog%.xuite%.net/_users/", "http://" .. sn_hash_prefix .. ".blog.xuite.net/", 1)
+        elseif string.match(match, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/") then
+          match = match:gsub("%.mms%.blog%.xuite%.net/", ".blog.xuite.net/", 1)
+        end
+        if string.match(match, "^https?://[0-9a-f]%.blog%.xuite%.net/[0-9a-f][0-9a-f]/[0-9a-f][0-9a-f]/") then
+          local sn_hash = string.match(match, "^https?://[0-9a-f]%.blog%.xuite%.net/([0-9a-f][0-9a-f]/[0-9a-f][0-9a-f])/")
+          match = match:gsub(sn_hash, sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(4,4).."/"..sn_hash:sub(5,5), 1)
+        end
+        if string.match(match, "^https?://[0-9a-f]%.blog%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/") then
+          match = match:gsub("^https", "http", 1)
         end
         match = urlcode.escape(match)
       end
@@ -2077,8 +2101,17 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "asset" and not new_locations[url] then
-    if string.match(url, "%.xml$") then
+  if item_type == "asset" then
+    if string.match(url, "^http://[0-9a-f]%.blog%.xuite%.net/") then
+      check(url:gsub("^http://[0-9a-f]%.blog%.xuite%.net/", "http://blog.xuite.net/_users/", 1))
+      check(url:gsub("%.blog%.xuite%.net/", ".mms.blog.xuite.net/", 1))
+    end
+    if string.match(url, "^http://[^/]*blog%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/")
+      or string.match(url, "^http://blog%.xuite%.net/_users/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/") then
+      local sn_hash = string.match(url, "^http://[^/]*blog%.xuite%.net/([0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f])/") or string.match(url, "^http://blog%.xuite%.net/_users/([0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f])/")
+      check(url:gsub(sn_hash, sn_hash:sub(1,1)..sn_hash:sub(3,3).."/"..sn_hash:sub(5,5)..sn_hash:sub(7,7), 1))
+    end
+    if string.match(url, "%.xml$") and not new_locations[url] then
       html = read_file(file)
       local handler = xmlhandler:new()
       xml2lua.parser(handler):parse(html)
@@ -2225,6 +2258,8 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     else
       return false
     end
+  elseif string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
+    return false
   -- cannot be 302
   elseif string.match(url["url"], "^https?://o%.[0-9a-f]%.photo%.xuite%.net/") and status_code == 302 then
     assert(string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=403$"), newloc)
@@ -2299,6 +2334,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
 
   if status_code == 0 or retry_url then
+    if string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
+      io.stdout:write("Ignore mms.blog.xuite.net.\n")
+      io.stdout:flush()
+      return wget.actions.EXIT
+    end
     io.stdout:write("Server returned bad response.")
     io.stdout:flush()
     tries = tries + 1
