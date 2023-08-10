@@ -294,6 +294,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "/[A-Za-z_]+%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "/%${[A-Za-z%$%[%]_]+}%${[A-Za-z%$%[%]_]+}$")
+    or string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]*/?\\/\\/vlog%.xuite%.net")
     or not string.match(url, "^https?://") then
     return false
   end
@@ -1874,7 +1875,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     elseif string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/.+$") then
       -- Let URL-agnostic deduplication happens
       local vlog_suffix = string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/(.+)$")
-      for i in 0, 15, 1 do
+      for i = 15, 0, -1 do
         check(string.format("https://%x.mms.vlog.xuite.net/", i) .. vlog_suffix)
       end
     end

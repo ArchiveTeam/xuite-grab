@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230810.01'
+VERSION = '20230810.02'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -336,8 +336,6 @@ class WgetArgs(object):
             wget_args.extend(['--warc-header', 'x-wget-at-project-item-name: '+item_name])
             wget_args.append('item-name://'+item_name)
             item_type, item_value = item_name.split(':', 1)
-            if item_type in ['blog', 'article', 'album', 'vlog']:
-                raise Exception('Skipping item type "{}" during discovery phase.'.format(item_type))
             # user serial number
             if item_type == 'user-sn':
                 assert re.search(r'^[1-9][0-9]{7,8}$', item_value), item_value
