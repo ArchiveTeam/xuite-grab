@@ -4,6 +4,8 @@ local http = require("socket.http")
 local https = require("ssl.https")
 local xml2lua = require("xml2lua.xml2lua")
 local xmlhandler = require("xml2lua.xmlhandler.tree")
+local base64 = require("base64")
+local md5 = require("md5")
 JSON = (loadfile "JSON.lua")()
 JSObj = (loadfile "JSObj.lua")()
 
@@ -433,18 +435,17 @@ allowed = function(url, parenturl)
   if string.match(url, "^https?://[^/]*xuite%.net/")
     or string.match(url, "^https?://[^/]*xuite%.tw/")
     or string.match(url, "^https?://[^/]*xuite%.com/") then
-    -- TODO: may produce false positive?
-    -- for _, pattern in pairs({
-    --   "([a-zA-Z0-9%-_]+)",
-    --   "([a-zA-Z0-9%%%-_]+)",
-    --   "([^/%?&]]+)"
-    -- }) do
-    --   for s in string.gmatch(string.match(url, "^https?://[^/]+(/.*)"), pattern) do
-    --     if ids[s] then
-    --       return true
-    --     end
-    --   end
-    -- end
+    for _, pattern in pairs({
+      "([a-zA-Z0-9%-_]+)",
+      "([a-zA-Z0-9%%%-_]+)",
+      "([^/%?&]]+)"
+    }) do
+      for s in string.gmatch(string.match(url, "^https?://[^/]+(/.*)"), pattern) do
+        if ids[s] then
+          return true
+        end
+      end
+    end
     if
       -- invalid, deprecated, requires login, duplicate swf, or should not be requested with GET
          string.match(url, "^https?://blog%.xuite%.net/_my2/")
@@ -738,8 +739,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://blog.xuite.net/_theme/snapshot/snapshot_avatar.php?mid="..item_value)
       local sn_hash = md5.sumhexa(item_value)
       for _, asset_name in pairs({ "photo.jpg", "avatar.jpg" }) do
-        for _, sn_prefix in pairs({ (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"), (sn_hash[1].."/"..sn_hash[2].."/"..sn_hash[3].."/"..sn_hash[4].."/") }) do
-          check("https://" .. sn_hash[1] .. ".blog.xuite.net/" .. sn_prefix .. asset_name)
+        for _, sn_prefix in pairs({
+          (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"),
+          (sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/")
+        }) do
+          check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. item_value .. "/" .. asset_name)
         end
       end
       check(url .. "/s")
@@ -1162,7 +1166,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local referer = "https://m.xuite.net/vlog/" .. user_id .. "?t=cat&p=/" .. p .. "&dir_num=all"
         check("https://m.xuite.net/vlog/ajax?apiType=more&offset=" .. json["offset"] .. "&user=" .. user_id .. "&vt=0&t=cat&p=/" .. p, referer)
       end
-    -- user:api
+    -- user:API
     elseif string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
       local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
       html = read_file(file)
@@ -1206,8 +1210,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           )
           local sn_hash = md5.sumhexa(user_sn_tbl[user_id])
           for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
-            for _, sn_prefix in pairs({ (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"), (sn_hash[1].."/"..sn_hash[2].."/"..sn_hash[3].."/"..sn_hash[4].."/") }) do
-              check("https://" .. sn_hash[1] .. ".blog.xuite.net/" .. sn_prefix .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
+            for _, sn_prefix in pairs({
+              (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"),
+              (sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/")
+            }) do
+              check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. user_sn_tbl[user_id] .. "/" .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
             end
           end
           if string.len(blog["thumb"]) >= 1 then
@@ -2022,7 +2029,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local relative_path = string.match(url, "^https?://mms%.blog%.xuite%.net(/[0-9a-f].+)$")
         local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
         check(urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path))
-      end      
+      end
     end
     if type(args["xml_url"]) == "string" then
       assert(string.match(args["xml_url"], "^//.+/flash_config%.xml$"))
