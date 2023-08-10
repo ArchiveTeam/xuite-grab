@@ -230,20 +230,25 @@ find_item = function(url)
     if not value then
       value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]%?[^?]+$")
     end
+    if value then
+      value = urlcode.escape(value)
+    end
     type_ = "embed"
   end
   if not value then
     for _, pattern in pairs({
-      "^https?://img%.xuite%.net/",
-      "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/",
-      "^https?://[0-9a-fs]%.blog%.xuite%.net/",
-      "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/",
-      "^https?://[0-9a-fs]%.photo%.xuite%.net/",
-      "^https?://[0-9a-f]%.share%.photo%.xuite%.net/",
-      "^https?://vlog%.xuite%.net/media/"
+      "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+$",
+      "^https?://img%.xuite%.net/.+$",
+      "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+$",
+      "^https?://[0-9a-fs]%.blog%.xuite%.net/.+$",
+      "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+$",
+      "^https?://[0-9a-fs]%.photo%.xuite%.net/.+$",
+      "^https?://[0-9a-f]%.share%.photo%.xuite%.net/.+$",
+      "^https?://vlog%.xuite%.net/media/.+$"
     }) do
       value = string.match(url, pattern)
       if value then
+        value = urlcode.escape(value)
         break
       end
     end
@@ -331,7 +336,6 @@ allowed = function(url, parenturl)
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)/cover[0-9]*%.jpg$"]="article",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)/cover[0-9]*%.jpg%?d=avatar_[mw]%.jpg$"]="article",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)%-[^/%?&=]*$"]="article",
-    ["^https?://pic%.xuite%.net/thumb/(.+)$"]="pic-thumb",
     ["^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+$"]="user",
     ["^https?://photo%.xuite%.net/_category%?st=cat&uid=([0-9A-Za-z._]+)&sk=[0-9]+%*[0-9]+$"]="user",
     ["^https?://photo%.xuite%.net/_category%?st=search&uid=([0-9A-Za-z._]+)&sk=[^%?&=]*$"]="user",
@@ -345,6 +349,8 @@ allowed = function(url, parenturl)
     ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog",
+    ["^(https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
+    ["^https?://pic%.xuite%.net/thumb/(.+)$"]="pic-thumb",
     ["^(https?://img%.xuite%.net/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
     ["^(https?://[0-9a-fs]%.blog%.xuite%.net/.+)$"]="asset",
@@ -388,11 +394,17 @@ allowed = function(url, parenturl)
       elseif type_ == "vlog" then
         match = discover_vlog(match)
       elseif type_ == "asset" then
-        if string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
+        if string.match(url, "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
+          -- also use [0-9a-f].blog.xuite.net
+          local relative_path = string.match(url, "^https?://pic%.xuite%.net(/[0-9a-f].+)$")
+          local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
+          discover_item(discovered_items, "asset:" .. urlcode.escape(urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path)))
+        elseif string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
           -- use [0-9a-f].mms.blog.xuite.net instead
           local relative_path = string.match(url, "^https?://mms%.blog%.xuite%.net(/[0-9a-f].+)$")
           local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
           match = urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path)
+          match = urlparse.absolute("http://" .. sn_hash_prefix .. ".mms.blog.xuite.net/", relative_path)
         end
         match = urlcode.escape(match)
       end
@@ -418,6 +430,7 @@ allowed = function(url, parenturl)
     -- API
     or string.match(url, "^https?://api%.xuite%.net/api%.php%?")
     or string.match(url, "^https?://api%.xuite%.net/oembed/%?")
+    or string.match(url, "^https?://blog%.xuite%.net/_service/smallpaint/list%.php%?")
     or (string.match(url, "^https?://blog%.xuite%.net/_theme/[A-Za-z]+%.php%?") and not string.match(url, "^https?://blog%.xuite%.net/_theme/GAExp%.php%?"))
     or string.match(url, "^https?://m%.xuite%.net/rpc/search%?")
     or string.match(url, "^https?://m%.xuite%.net/rpc/blog%?")
@@ -517,8 +530,7 @@ allowed = function(url, parenturl)
       return true
     elseif string.match(url, "%.swf$") or string.match(url, "%.swf%?[^?]*$") then
       -- TODO: inspect the collected xuite-data backfeed to discover FlashVars rules
-      print("Found swf " .. url)
-      discover_item(discovered_data, "embed," .. urlcode.escape(url))
+      discover_item(discovered_items, "embed:" .. urlcode.escape(url))
       return false
     else
       -- TODO: can we throw the rest into URLs?
@@ -902,6 +914,22 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     elseif string.match(url, "^https?://m%.xuite%.net/blog/[0-9A-Za-z._]+$") then
       local user_id = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z._]+)$")
       assert(user_id == item_value)
+    -- user:blog:smallpaint
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/smallpaint/list%.php%?") then
+      html = read_file(file)
+      local handler = xmlhandler:new()
+      xml2lua.parser(handler):parse(html)
+      if handler.root["DRAW"]["ALBUM"] then
+        if handler.root["DRAW"]["ALBUM"]["_attr"] then
+          check(handler.root["DRAW"]["ALBUM"]["_attr"]["LINK"])
+        else
+          for _, ALBUM in pairs(handler.root["DRAW"]["ALBUM"]) do
+            check(ALBUM["_attr"]["LINK"])
+          end
+        end
+      else
+        assert(handler.root["DRAW"]["_attr"]["TOTAL"] == "0")
+      end
     -- user:album
     elseif string.match(url, "^https?://m%.xuite%.net/photo/[0-9A-Za-z._]+$") then
       local user_id = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)$")
@@ -1136,7 +1164,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     elseif string.match(url, "^https?://vlog%.xuite%.net/_playlist/play%?plid=[0-9]+$") then
       local plid = string.match(url, "^https?://vlog%.xuite%.net/_playlist/play%?plid=([0-9]+)$")
       assert(new_locations[url], url)
-      assert(string.match(new_locations[url], "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+%?as=1&list=([0-9]+)$") == plid, new_locations[url])
+      if not string.match(new_locations[url], "^https://my%.xuite%.net/error%.php%?") then
+        assert(string.match(new_locations[url], "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+%?as=1&list=([0-9]+)$") == plid, new_locations[url])
+      end
     elseif string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+%?as=1&list=[0-9]+$") then
       local plid = string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+%?as=1&list=([0-9]+)$")
       html = read_file(file)
@@ -1227,6 +1257,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
               check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. user_sn_tbl[user_id] .. "/" .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
             end
           end
+          check("http://blog.xuite.net/_theme/SmallPaintExp.php?mid=" .. user_sn_tbl[user_id] .. "&bid=" .. blog["blog_id"], "https://blog.xuite.net/" .. user_id .. "/" .. blog["blog_name"])
+          check("http://blog.xuite.net/_service/smallpaint/swf/main.swf?server_url=/_users&service_url=/_service/smallpaint/&save_url=/_service/smallpaint/save.php&list_url=/_service/smallpaint/list.php&bid=" .. blog["blog_id"] .. "&author=N")
+          check("http://blog.xuite.net/_service/smallpaint/list.php?bid=" .. blog["blog_id"] .. "&ran=0")
           if string.len(blog["thumb"]) >= 1 then
             check(blog["thumb"])
           end
@@ -1328,7 +1361,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           or string.match(embed, "//[^/]*xuite%.com/")
           or string.match(embed, "//[^/]*xuite%.tw/")
           or string.match(embed, "^/[^/]") then
-          discover_item(discovered_data, "embed," .. urlcode.escape(url))
+          discover_item(discovered_items, "embed:" .. urlcode.escape(url))
         end
       end
       -- https://blog.xuite.net/_public/js/blog_01.js TemplateJS.item_main.main()
@@ -2014,6 +2047,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(args["service_url"] == "/_service/paint/", args["service_url"])
       assert(args["act"] == "show", args["act"])
       assert(argc == 4)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/smallpaint/swf/main%.swf%?") then
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/smallpaint/", args["service_url"])
+      assert(args["save_url"] == "/_service/smallpaint/save.php", args["save_url"])
+      assert(args["list_url"] == "/_service/smallpaint/list.php", args["list_url"])
+      assert(type(args["bid"]) == "string" and string.match(args["bid"], "^[0-9]+$"), args["bid"])
+      assert(args["author"] == "Y" or args["author"] == "N", args["author"])
+      assert(argc == 6)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
       assert(args["server_url"] == "/_users", args["server_url"])
@@ -2021,6 +2062,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(type(args["ImageUrl"]) == "string")
       assert(args["act"] == "show", args["act"])
       assert(argc == 5)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/templet/.+%.swf$") then
+      -- do nothing
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/wall/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
       assert(args["server_url"] == "/_users", args["server_url"])
@@ -2052,9 +2095,45 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if item_type == "asset" then
-    if string.match(url, "/flash_config%.xml$") then
-      error("TODO: get images referenced by flash_config.xml")
+  if item_type == "asset" and not new_locations[url] then
+    if string.match(url, "%.xml$") then
+      html = read_file(file)
+      local handler = xmlhandler:new()
+      xml2lua.parser(handler):parse(html)
+      if string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
+        assert(handler.root["NSS"]["SHOW_XML"])
+        assert(handler.root["NSS"]["MP3_XML"])
+      elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
+        assert(handler.root["DRAWDATA"]["PAINT"])
+      elseif string.match(url, "blog_[0-9]+/slideshow/[0-9]+/flash_config%.xml$") then
+        assert(handler.root["SS"]["A_XML"]["P_XML"])
+        assert(type(handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]) == "string")
+        assert(type(handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
+        if handler.root["SS"]["A_XML"]["P_XML"]["_attr"] then
+          check(handler.root["SS"]["A_XML"]["P_XML"]["_attr"]["P_FP"])
+        else
+          for _, P_XML in pairs(handler.root["SS"]["A_XML"]["P_XML"]) do
+            check(P_XML["_attr"]["P_FP"])
+          end
+        end
+        check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
+        check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+      elseif string.match(url, "blog_[0-9]+/tvwall/flash_config%.xml$") then
+        assert(handler.root["WALL"]["PHO"])
+        if handler.root["WALL"]["PHO"]["_attr"] then
+          check(urlparse.absolute("http://blog.xuite.net/", handler.root["WALL"]["PHO"]["_attr"]["P_UR"]))
+        else
+          for _, PHO in pairs(handler.root["WALL"]["PHO"]) do
+            check(urlparse.absolute("http://blog.xuite.net/", PHO["_attr"]["P_UR"]))
+          end
+        end
+      elseif string.match(url, "/flash_config%.xml$") then
+        error("Unrecognized occurrence of flash_config.xml")
+      elseif string.match(url, "blog_[0-9]+/smallpaint/[0-9]+%.xml$") then
+        assert(handler.root["DRAWDATA"]["PAINT"])
+      else
+        error("Unrecognized occurrence of XML file")
+      end
     end
   end
 
@@ -2114,17 +2193,21 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if not item_name then
     error("No item name found.")
   end
+  -- no need to save known error pages that have been saved thousands of times
   if string.match(url["url"], "^https?://my%.xuite%.net/error%.php%?") then
     local err_url = url["url"]
     if string.match(err_url, "%?channel=www&ecode=404$")
       or string.match(err_url, "%?channel=www&ecode=NoAccount$")
       or string.match(err_url, "%?channel=www&ecode=Nodata$")
       or string.match(err_url, "%channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=文章不存在$")
-      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=資料錯誤$") then
+      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=資料錯誤$")
+      or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=抱歉，您瀏覽的影音不存在或為不公開!!$") then
       return false
+    -- vlog file session key has expired
     elseif string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=影音認證碼錯誤$") then
       abortgrab = true
     end
+  -- the article must belong to one of the four scenarios
   elseif string.match(url["url"], "^https?://blog%.xuite%.net/[0-9A-Za-z.][0-9A-Za-z._]*/[0-9A-Za-z]+/?[^/%.%?&=]*$") then
     local html = read_file(http_stat["local_file"])
     if status_code == 200
@@ -2135,8 +2218,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       retry_url = true
       return false
     end
+  -- must be valid JSON
   elseif string.match(url["url"], "^https?://api%.xuite%.net/api%.php%?")
-    or string.match(url["url"], "^https?://blog%.xuite%.net/_theme/[A-Za-z]+%.php%?") then
+    or (string.match(url["url"], "^https?://blog%.xuite%.net/_theme/[A-Za-z]+%.php%?")
+      and not string.match(url["url"], "^https?://blog%.xuite%.net/_theme/SmallPaintExp%.php%?")) then
     if status_code == 200 then
       local html = read_file(http_stat["local_file"])
       local json = JSON:decode(html)
@@ -2158,6 +2243,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     else
       return false
     end
+  -- cannot be 302
   elseif string.match(url["url"], "^https?://o%.[0-9a-f]%.photo%.xuite%.net/") and status_code == 302 then
     assert(string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=403$"), newloc)
     retry_url = true
