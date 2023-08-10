@@ -176,32 +176,11 @@ find_item = function(url)
     type_ = "blog"
   end
   if not value then
-    local uid, burl = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)$")
-    if uid and burl then
-      value = uid .. ":" .. burl
-    end
-    type_ = "blog"
-  end
-  if not value then
     local uid, burl, aid = string.match(url, "^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)$")
     if uid and burl and aid then
       value = uid .. ":" .. burl .. ":" .. aid
     end
     type_ = "article"
-  end
-  if not value then
-    local uid, burl, aid = string.match(url, "^https?://m%.xuite%.net/blog/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/([0-9]+)$")
-    if uid and burl and aid then
-      value = uid .. ":" .. burl .. ":" .. aid
-    end
-    type_ = "article"
-  end
-  if not value then
-    local uid, aid = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$")
-    if uid and aid then
-      value = uid .. ":" .. aid
-    end
-    type_ = "album"
   end
   if not value then
     local uid, aid = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$")
@@ -1431,6 +1410,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           -- collect site_label numbers and leave them to URLs
           check("https://blog.xuite.net/_theme/GAExp.php?site_label=" .. site_label, url)
         end
+        check(url:gsub("^https?://blog%.xuite%.net/", "https://m.xuite.net/blog/", 1))
       end
     -- blog:pc:visitor
     elseif string.match(url, "^https?://my%.xuite%.net/api/visitor2xml%.php%?") then
@@ -1600,6 +1580,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         for _, asset_name in pairs({ "cover.jpg", "cover200.jpg", "cover400.jpg", "cover600.jpg" }) do
           check(url .. "/" .. asset_name)
         end
+        check(url:gsub("^https?://blog%.xuite%.net/", "https://m.xuite.net/blog/", 1))
       end
     -- article:pc:_theme
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/ArticleDetailCounterExp%.php%?") then
@@ -1726,6 +1707,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         .. "&limit=" .. "500"
       )
       check("https://photo.xuite.net/_feed/photo?user_id=" .. user_id .. "&album_id=" .. album_id .. "&count=-1")
+      check(url:gsub("^https?://m%.xuite%.net/photo/", "https://photo.xuite.net/", 1))
     elseif string.match(url, "^https?://photo%.xuite%.net/_feed/photo%?user_id=[0-9A-Za-z._]+&album_id=[0-9]+&count=%-?[0-9]+$") then
       local user_id, album_id, count = string.match(url, "^https?://photo%.xuite%.net/_feed/photo%?user_id=([0-9A-Za-z._]+)&album_id=([0-9]+)&count=(%-?[0-9]+)$")
       html = read_file(file)

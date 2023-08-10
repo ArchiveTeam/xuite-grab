@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230810.04'
+VERSION = '20230810.05'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -360,7 +360,6 @@ class WgetArgs(object):
                 assert re.search(r'^[0-9A-Za-z]+$', blog_url), blog_url
                 wget_args.extend(['--warc-header', 'xuite-blog-url: '+blog_url])
                 wget_args.append('https://blog.xuite.net/{}/{}'.format(user_id, blog_url))
-                wget_args.append('https://m.xuite.net/blog/{}/{}'.format(user_id, blog_url))
             # blog article
             elif item_type == 'article':
                 if item_value.count(':') == 2:
@@ -377,7 +376,6 @@ class WgetArgs(object):
                 wget_args.extend(['--warc-header', 'xuite-article-blog-url: '+blog_url])
                 wget_args.extend(['--warc-header', 'xuite-article-id: '+article_id])
                 wget_args.append('https://blog.xuite.net/{}/{}/{}'.format(user_id, blog_url, article_id))
-                wget_args.append('https://m.xuite.net/blog/{}/{}/{}'.format(user_id, blog_url, article_id))
             # album
             elif item_type == 'album':
                 assert item_value.count(':') == 1, item_value
@@ -385,7 +383,6 @@ class WgetArgs(object):
                 assert re.search(r'^[0-9A-Za-z._]+$', user_id), user_id
                 assert re.search(r'^[0-9]+$', album_id), album_id
                 wget_args.extend(['--warc-header', 'xuite-album-id: '+album_id])
-                wget_args.append('https://photo.xuite.net/{}/{}'.format(user_id, album_id))
                 wget_args.append('https://m.xuite.net/photo/{}/{}'.format(user_id, album_id))
             # vlog
             elif item_type == 'vlog':
