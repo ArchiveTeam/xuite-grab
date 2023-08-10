@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230810.02'
+VERSION = '20230810.03'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -407,13 +407,15 @@ class WgetArgs(object):
             # embedded swf
             elif item_type == 'embed':
                 assert re.search(r'^https?%3A%2F%2F', item_value), item_value
-                if not re.search(r'\.[Ss][Ww][Ff](?:\?[^?]+)?$', item_value):
+                item_url = urllib.parse.unquote(item_value)
+                if not re.search(r'\.[Ss][Ww][Ff](?:\?[^?]+)?$', item_url):
                     raise NotImplementedError('TODO: handle <embed> other than swf')
-                wget_args.append(urllib.parse.unquote(item_value))
+                wget_args.append(item_url)
             # asset
             elif item_type == 'asset':
                 assert re.search(r'^https?%3A%2F%2F', item_value), item_value
-                wget_args.append(urllib.parse.unquote(item_value))
+                item_url = urllib.parse.unquote(item_value)
+                wget_args.append(item_url)
             else:
                 raise ValueError('Unknown item type: '+item_type)
 

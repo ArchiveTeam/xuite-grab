@@ -235,6 +235,7 @@ find_item = function(url)
   if not value then
     for _, pattern in pairs({
       "^https?://img%.xuite%.net/",
+      "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/",
       "^https?://[0-9a-fs]%.blog%.xuite%.net/",
       "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/",
       "^https?://[0-9a-fs]%.photo%.xuite%.net/",
@@ -345,7 +346,9 @@ allowed = function(url, parenturl)
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$"]="vlog",
     ["^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)/[^/%?&=]+$"]="vlog",
     ["^(https?://img%.xuite%.net/.+)$"]="asset",
+    ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
     ["^(https?://[0-9a-fs]%.blog%.xuite%.net/.+)$"]="asset",
+    ["^(https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)"]="asset",
     ["^(https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+)$"]="asset",
     ["^(https?://[0-9a-fs]%.photo%.xuite%.net/.+)$"]="asset",
     ["^https?://o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/"]="album",
@@ -385,6 +388,12 @@ allowed = function(url, parenturl)
       elseif type_ == "vlog" then
         match = discover_vlog(match)
       elseif type_ == "asset" then
+        if string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
+          -- use [0-9a-f].mms.blog.xuite.net instead
+          local relative_path = string.match(url, "^https?://mms%.blog%.xuite%.net(/[0-9a-f].+)$")
+          local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
+          match = urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path)
+        end
         match = urlcode.escape(match)
       end
       local new_item = type_ .. ":" .. match
@@ -1972,6 +1981,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 
   if item_type == "embed" then
     local args = parse_args(url)
+    local argc = 0
+    for _, _ in pairs(args) do argc = argc + 1 end
     if string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshow%.swf%?")
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshowA%.swf%?")
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshow%.swf%?")
@@ -1991,49 +2002,43 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       discover_album(user_id, album_id)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/mtv/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users")
-      assert(args["service_url"] == "/_service/mtv/")
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/mtv/", args["service_url"])
       assert(type(args["ImageUrl"]) == "string")
       assert(type(args["SoundUrl"]) == "string")
-      assert(args["act"] == "show")
-      assert(#args == 6)
+      assert(args["act"] == "show", args["act"])
+      assert(argc == 6)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/paint/swf/show%.swf%?") then
       assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users")
-      assert(args["service_url"] == "/_service/paint/")
-      assert(args["act"] == "show")
-      assert(#args == 4)
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/paint/", args["service_url"])
+      assert(args["act"] == "show", args["act"])
+      assert(argc == 4)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users")
-      assert(args["service_url"] == "/_service/slideshow/")
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/slideshow/", args["service_url"])
       assert(type(args["ImageUrl"]) == "string")
-      assert(args["act"] == "show")
-      assert(#args == 5)
+      assert(args["act"] == "show", args["act"])
+      assert(argc == 5)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/wall/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users")
-      assert(args["service_url"] == "/_service/wall/")
-      assert(type(args["ImageUrl"]) == "string")
-      assert(args["act"] == "show")
-      assert(type(args["nocache"]) == "string" or type(args["nocache"]) == "nil")
-      assert(5 <= #args and #args <= 6)
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/wall/", args["service_url"])
+      assert(args["act"] == "show", args["act"])
+      assert((type(args["nocache"]) == "string" and argc == 5) or (type(args["nocache"]) == "nil" and argc == 4))
     else
       error("TODO: unknown embedded SWF file: " .. url)
     end
     local check_assetUrl = function(url)
       assert(string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
-        or string.match(url, "^https?://mms%.blog%.xuite%.net/"), url)
+        or string.match(url, "^https?://mms%.blog%.xuite%.net/")
+        or string.match(url, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/"), url)
       check(url)
-      if string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/")
-        or string.match(url, "^https?://mms%.blog%.xuite%.net/[0-9a-f][0-9a-f]/[0-9a-f][0-9a-f]/") then
-        local relative_path = string.match(url, "^https?://mms%.blog%.xuite%.net(/[0-9a-f].+)$")
-        local sn_hash_prefix = string.match(relative_path, "^/([0-9a-f])")
-        check(urlparse.absolute("http://" .. sn_hash_prefix .. ".blog.xuite.net/", relative_path))
-      end
     end
     if type(args["xml_url"]) == "string" then
-      assert(string.match(args["xml_url"], "^//.+/flash_config%.xml$"))
+      assert(string.match(args["xml_url"], "^/.+/flash_config%.xml$")
+        or string.match(args["xml_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/flash_config%.xml$"), args["xml_url"])
       check(urlparse.absolute("http://blog.xuite.net/", args["xml_url"]))
     end
     if type(args["ImageUrl"]) == "string" then
@@ -2042,7 +2047,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
     end
     if type(args["SoundUrl"]) == "string" then
-      assert(select(2, string.gsub(args["SoundUrl"], ",")) == 0)
+      assert(select(2, args["SoundUrl"]:gsub(",", ",")) == 0)
       check_assetUrl(args["SoundUrl"])
     end
   end
