@@ -992,12 +992,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       local json = JSON:decode(html)
       if json["ok"] then
+        local rsp_n = 0
         local referer = "https://m.xuite.net/photo/" .. user_id
         for _, rsp in pairs(json["rsp"]) do
           check(rsp["thumb"], referer)
+          rsp_n = rsp_n + 1
         end
         if json["_ismore"] then
-          check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. user_id .. "&limit=12&offset=" .. string.format("%.0f", tonumber(offset) + #json["rsp"]) .. "&sk=&p=", referer)
+          check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. user_id .. "&limit=12&offset=" .. string.format("%.0f", tonumber(offset) + rsp_n) .. "&sk=&p=", referer)
         end
       end
     -- user:album:tag
@@ -1039,12 +1041,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       local json = JSON:decode(html)
       if json["ok"] then
+        local rsp_n = 0
         local referer = "https://m.xuite.net/photo/" .. user_id .. "?t=tag&p=" .. tagid
         for _, rsp in pairs(json["rsp"]) do
           check(rsp["thumb"], referer)
+          rsp_n = rsp_n + 1
         end
         if json["_ismore"] then
-          check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. user_id .. "&limit=12&offset=" .. string.format("%.0f", tonumber(offset) + #json["rsp"]) .. "&sk=&p=", referer)
+          check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. user_id .. "&limit=12&offset=" .. string.format("%.0f", tonumber(offset) + rsp_n) .. "&sk=&p=", referer)
         end
       end
     -- user:album:category
@@ -1293,7 +1297,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             )
           end
         else
-          assert(#json["rsp"]["articles"] == 0)
+          local articles_n = 0
+          for _, _ in pairs(json["rsp"]["articles"]) do articles_n = articles_n + 1 end
+          assert(articles_n == 0)
         end
         for _, article in pairs(json["rsp"]["articles"]) do
           assert(string.match(article["article_id"], "^[0-9]+$"))
@@ -1325,7 +1331,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           check("https://photo.xuite.net/_category?st=cat&uid=" .. user_id .. "&sk=" .. album["category_id"])
         end
       elseif (string.match(url, "method=xuite%.vlog%.public%.getVlogs&") or string.match(url, "method=xuite%.vlog%.public%.getVlogsByDir&")) and json["ok"] then
-        assert(json["rsp"]["total"] == #json["rsp"]["vlogs"])
+        local vlogs_n = 0
+        for _, _ in pairs(json["rsp"]["vlogs"]) do vlogs_n = vlogs_n + 1 end
+        assert(json["rsp"]["total"] == vlogs_n)
         for _, vlog in pairs(json["rsp"]["vlogs"]) do
           discover_vlog(vlog["vlog_id"])
         end
@@ -1333,7 +1341,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         if json["rsp"]["total"] == 0 then
           assert(json["rsp"]["dirs"] == nil)
         else
-          assert(json["rsp"]["total"] == #json["rsp"]["dirs"])
+          local dirs_n = 0
+          for _, _ in pairs(json["rsp"]["dirs"]) do dirs_n = dirs_n + 1 end
+          assert(json["rsp"]["total"] == dirs_n)
           for _, dir in pairs(json["rsp"]["dirs"]) do
             assert(string.match(dir["dir_id"], "^[0-9]+$"))
             discover_item(discovered_data, "directory," .. dir["dir_id"] .. "," .. user_id)
@@ -1737,17 +1747,21 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       local json = JSON:decode(html)
       if json["error"] == nil then
+        local photos_n = 0
+        for _, _ in pairs(json["photos"]) do photos_n = photos_n + 1 end
         assert(json["user_id"] == user_id)
         assert(json["album_id"] == album_id)
-        assert(tonumber(count) <= 0 and tonumber(json["total"]) == #json["photos"] or tonumber(count) >= #json["photos"])
+        assert(tonumber(count) <= 0 and tonumber(json["total"]) == photos_n or tonumber(count) >= photos_n)
       end
     elseif string.match(url, "^https?://m%.xuite%.net/rpc/photo%?method=loadPhotos&userId=[0-9A-Za-z._]+&albumId=[0-9]+&limit=24&offset=[0-9]+$") then
       local user_id, album_id, offset = string.match(url, "^https?://m%.xuite%.net/rpc/photo%?method=loadPhotos&userId=([0-9A-Za-z._]+)&albumId=([0-9]+)&limit=24&offset=([0-9]+)$")
       html = read_file(file)
       local json = JSON:decode(html)
       if json["ok"] and json["_ismore"] then
+        local photos_n = 0
+        for _, _ in pairs(json["rsp"]["photos"]) do photos_n = photos_n + 1 end
         local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
-        check("https://m.xuite.net/rpc/photo?method=loadPhotos&userId=" .. user_id .. "&albumId=" .. album_id ..  "&limit=24&offset=" .. string.format("%.0f", tonumber(offset) + #json["rsp"]["photos"]), referer)
+        check("https://m.xuite.net/rpc/photo?method=loadPhotos&userId=" .. user_id .. "&albumId=" .. album_id ..  "&limit=24&offset=" .. string.format("%.0f", tonumber(offset) + photos_n), referer)
       end
     -- album:photo
     elseif string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg$") then
@@ -1799,12 +1813,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
         local album_id = string.match(url, "&album_id=([0-9]+)")
         local start = string.match(url, "&start=([0-9]+)")
+        local photos_n = 0
         for _, photo in pairs(json["rsp"]["photos"]) do
           assert(string.match(photo["position"], "^[0-9]+$"))
           local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
           check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", referer)
+          photos_n = photos_n + 1
         end
-        if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and #json["rsp"]["photos"] >= 1 then
+        if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and photos_n >= 1 then
           start = string.format("%.0f", tonumber(start) + 500)
           check(
             "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
@@ -1955,9 +1971,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       local json = JSON:decode(html)
       if json and json["ok"] then
+        local items_n = 0
+        for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
         if method == "blog" or method == "vlog" then
           if json["rsp"]["_ismore"] == true then
-            assert(limit == #json["rsp"]["items"] - 1)
+            assert(limit == items_n - 1)
             check(
               "https://m.xuite.net/rpc/search?method=" .. method
               .. "&kw=" .. kw
@@ -1965,13 +1983,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
               .. "&limit=" .. string.format("%.0f", limit)
             )
           else
-            assert(#json["rsp"]["items"] == 0 or offset + #json["rsp"]["items"] - 2 == json["rsp"]["total"])
+            assert(items_n == 0 or offset + items_n - 2 == json["rsp"]["total"])
           end
           if offset == 1 then
             print("Found " .. string.format("%.0f", json["rsp"]["total"]) .. " " .. (method == "blog" and "articles" or "vlogs"))
           end
         elseif method == "account" or method == "nickname" then
-          assert(json["rsp"]["count"] >= #json["rsp"]["items"] - 1 and #json["rsp"]["items"] >= 1)
+          assert(json["rsp"]["count"] >= items_n - 1 and items_n >= 1)
           if json["rsp"]["count"] == 30 and limit == 30 then
             for _ = 1, 20 do
               -- results vary with the limit
@@ -2253,8 +2271,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       retry_url = true
       return false
     end
-    if string.match(url["url"], "%?method=account") and json and json["ok"] == true and #json["rsp"]["items"] >= 2 then
-      return true
+    if string.match(url["url"], "%?method=account") and json and json["ok"] == true then
+      local items_n = 0
+      for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
+      return items_n >= 2
     else
       return false
     end
