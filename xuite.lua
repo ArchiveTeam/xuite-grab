@@ -668,6 +668,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             ["X-Requested-With"] = "XMLHttpRequest"
           }
         })
+      elseif string.match(url_, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg%??[^/%?]*$") then
+        table.insert(urls, {
+          url=url_,
+          headers={
+            ["Cookie"] = "exif=1",
+            ["Referer"] = "https://m.xuite.net/"
+          }
+        })
       elseif referer then
         table.insert(urls, {
           url=url_,
@@ -1730,6 +1738,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local count = string.match(html, "<div class=\"photolist%-Subdirectory\"> <span>個人相簿＞.*%(共([0-9]+)張%)</span><a href=\"/photo/[0-9A-Za-z._]+\">回相簿列表</a> </div>")
         assert(tonumber(count) <= 24, url)
       end
+      -- before wget discovers the first 24 photos, we must explicitly pass them to check()
+      -- otherwise, we have no chance to append the header ["Cookie"] = "exif=1"
+      for photo_suffix in string.gmatch(html, "<a class=\"photolist%-photo%-thumb\" href=\"/photo(/[0-9A-Za-z._]+/[0-9]+/[0-9]+)\" data%-pos=\"[0-9]+\">") do
+        check("https://m.xuite.net/photo" .. photo_suffix)
+        -- the above URL 302 redirects to the following URL, so the following URL must be also explicitly passed to check()
+        check("https://photo.xuite.net" .. photo_suffix .. ".jpg")
+      end
+      check("https://photo.xuite.net/_feed/photo?user_id=" .. user_id .. "&album_id=" .. album_id .. "&count=-1")
       check(
         "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
         .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. album_id .. xuite_api_key .. "500" .. "xuite.photo.public.getPhotos" .. "" .. "0" .. user_id)
@@ -1740,7 +1756,6 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         .. "&start=" .. "0"
         .. "&limit=" .. "500"
       )
-      check("https://photo.xuite.net/_feed/photo?user_id=" .. user_id .. "&album_id=" .. album_id .. "&count=-1")
       check(url:gsub("^https?://m%.xuite%.net/photo/", "https://photo.xuite.net/", 1))
     elseif string.match(url, "^https?://photo%.xuite%.net/_feed/photo%?user_id=[0-9A-Za-z._]+&album_id=[0-9]+&count=%-?[0-9]+$") then
       local user_id, album_id, count = string.match(url, "^https?://photo%.xuite%.net/_feed/photo%?user_id=([0-9A-Za-z._]+)&album_id=([0-9]+)&count=(%-?[0-9]+)$")
@@ -1792,7 +1807,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check(img_prefix .. "q" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "Q" .. img_suffix, "https://photo.xuite.net/")
       -- https://photo.xuite.net/javascripts/picture_single.comb.js $("#single-more #single-more-title").click(); $.post()
-      -- TODO: optionally set Cookie exif=1 to get EXIF included in HTML and avoid this POST request
+      -- Although Cookie exif=1 is set to get the Exif included in the HTML, we also make this POST request
       if string.match(html, "<div id=\"single%-more%-title\" ><a href=\"javascript:;\" >更多相片資訊</a></div>") then
         table.insert(urls, {
           url="https://photo.xuite.net/_picinfo/exif",
@@ -1817,7 +1832,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         for _, photo in pairs(json["rsp"]["photos"]) do
           assert(string.match(photo["position"], "^[0-9]+$"))
           local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
-          check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", referer)
+          check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. photo["position"], referer)
+          check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", "https://m.xuite.net/")
           photos_n = photos_n + 1
         end
         if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and photos_n >= 1 then
