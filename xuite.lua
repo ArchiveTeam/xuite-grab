@@ -118,17 +118,24 @@ discover_blog = function(uid, burl, bid)
   discover_item(discovered_items, "blog:" .. uid .. ":" .. burl)
   if type(bid) == "string" then
     assert(string.match(bid, "^[0-9]+$"))
+    discover_item(discovered_items, "blog-api:" .. uid .. ":" .. bid)
     discover_item(discovered_data, "blog," .. bid .. "," .. uid .. "," .. burl)
   else
     assert(bid == nil)
   end
 end
 
-discover_article = function(uid, burl, aid)
+discover_article = function(uid, burl, aid, bid)
   assert(string.match(uid, "^[0-9A-Za-z._]+$"))
-  assert(string.match(burl, "^[0-9A-Za-z]+$"))
+  -- assert(string.match(burl, "^[0-9A-Za-z]+$")) -- accept malformed blog URLs
   assert(string.match(aid, "^[0-9]+$"))
   discover_item(discovered_items, "article:" .. uid .. ":" .. burl .. ":" .. aid)
+  if type(bid) == "string" then
+    assert(string.match(bid, "^[0-9]+$"))
+    discover_item(discovered_items, "article-api:" .. uid .. ":" .. bid .. ":" .. aid)
+  else
+    assert(bid == nil)
+  end
 end
 
 discover_album = function(uid, aid)
@@ -181,6 +188,18 @@ find_item = function(url)
       value = uid .. ":" .. burl .. ":" .. aid
     end
     type_ = "article"
+  end
+  if not value then
+    if string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
+      local args = parse_args(url)
+      if args["method"] == "xuite.blog.public.getTopArticle" then
+        value = args["user_id"] .. ":" .. args["blog_id"]
+        type_ = "blog-api"
+      elseif args["method"] == "xuite.blog.public.getArticle" then
+        value = args["user_id"] .. ":" .. args["blog_id"] .. ":" .. args["article_id"]
+        type_ = "article-api"
+      end
+    end
   end
   if not value then
     local uid, aid = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$")
@@ -293,6 +312,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "/[A-Za-z_]+%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "/%${[A-Za-z%$%[%]_]+}%${[A-Za-z%$%[%]_]+}$")
+    or string.match(url, "^https?://api%.xuite%.net/\\\"https?:\\/\\/.+\\\"$")
     or string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]*/?\\/\\/vlog%.xuite%.net")
     or not string.match(url, "^https?://") then
     return false
@@ -1232,37 +1252,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       elseif string.match(url, "method=xuite%.blog%.public%.getBlogs&") and json["ok"] then
         for _, blog in pairs(json["rsp"]["blogs"]) do
           assert(string.match(blog["blog_id"], "^[0-9]+$"))
-          assert(string.match(blog["blog_name"], "^[0-9A-Za-z]+$"))
+          -- assert(string.match(blog["blog_name"], "^[0-9A-Za-z]+$")) -- accept malformed blog URLs
           discover_blog(user_id, blog["blog_name"], blog["blog_id"])
-          check(
-            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
-            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog["blog_id"] .. "xuite.blog.public.getTopArticle" .. user_id)
-            .. "&method=xuite.blog.public.getTopArticle"
-            .. "&blog_id=" .. blog["blog_id"]
-            .. "&user_id=" .. user_id
-          )
-          check(
-            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
-            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog["blog_id"] .. "" .. "" .. "" .. "" .. "10" .. "xuite.blog.public.getArticles" .. "" .. "1" .. user_id)
-            .. "&method=xuite.blog.public.getArticles"
-            .. "&blog_id=" .. blog["blog_id"]
-            .. "&user_id=" .. user_id
-            .. "&start=" .. "1"
-            .. "&limit=" .. "10"
-            .. "&blog_pw="
-            .. "&keyword="
-            .. "&category_id="
-            .. "&date="
-            .. "&month="
-          )
-          check(
-            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
-            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog["blog_id"] .. "" .. "xuite.blog.public.getBlogCategories" .. user_id)
-            .. "&method=xuite.blog.public.getBlogCategories"
-            .. "&blog_id=" .. blog["blog_id"]
-            .. "&user_id=" .. user_id
-            .. "&blog_pw="
-          )
           local sn_hash = md5.sumhexa(user_sn_tbl[user_id])
           for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
             for _, sn_prefix in pairs({
@@ -1277,58 +1268,6 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           check("http://blog.xuite.net/_service/smallpaint/list.php?bid=" .. blog["blog_id"] .. "&ran=0")
           if string.len(blog["thumb"]) >= 1 then
             check(blog["thumb"])
-          end
-        end
-      elseif string.match(url, "method=xuite%.blog%.public%.getArticles&") and json["ok"] then
-        local blog_id = string.match(url, "&blog_id=([0-9]+)")
-        local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
-        local start = string.match(url, "&start=([0-9]+)")
-        local limit = string.match(url, "&limit=([0-9]+)")
-        if json["rsp"]["total"] ~= nil then
-          assert(string.match(json["rsp"]["total"], "^[0-9]+$"))
-          start = tonumber(start)
-          if start + 9 < tonumber(json["rsp"]["total"]) then
-            start = string.format("%.0f", start + tonumber(limit))
-            check(
-              "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
-              .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog_id .. "" .. "" .. "" .. "" .. limit .. "xuite.blog.public.getArticles" .. "" .. start .. user_id)
-              .. "&method=xuite.blog.public.getArticles"
-              .. "&blog_id=" .. blog_id
-              .. "&user_id=" .. user_id
-              .. "&start=" .. start
-              .. "&limit=" .. limit
-              .. "&blog_pw="
-              .. "&keyword="
-              .. "&category_id="
-              .. "&date="
-              .. "&month="
-            )
-          end
-        else
-          local articles_n = 0
-          for _, _ in pairs(json["rsp"]["articles"]) do articles_n = articles_n + 1 end
-          assert(articles_n == 0)
-        end
-        for _, article in pairs(json["rsp"]["articles"]) do
-          assert(string.match(article["article_id"], "^[0-9]+$"))
-          assert(string.match(article["access"], "^[0-9]$"), "Unknown article access: " .. article["access"])
-          local blog_url, article_id = string.match(article["url"], "^http://blog.xuite.net/[0-9A-Za-z._]+/([0-9A-Za-z]+)/([0-9]+)$")
-          assert(article_id == article["article_id"])
-          discover_article(user_id, blog_url, article_id)
-          check(
-            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
-            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. article_id .. "" .. blog_id .. "" .. "xuite.blog.public.getArticle" .. user_id)
-            .. "&method=xuite.blog.public.getArticle"
-            .. "&blog_id=" .. blog_id
-            .. "&user_id=" .. user_id
-            .. "&article_id=" .. article_id
-            .. "&blog_pw="
-            .. "&article_pw="
-          )
-          if article["access"] ~= "4" and article["access"] ~= "5" then
-            assert(article["thumb"] and article["thumb2"])
-            check(article["thumb2"])
-            check(article["thumb"])
           end
         end
       elseif string.match(url, "method=xuite%.photo%.public%.getAlbums&") and json["ok"] then
@@ -1544,6 +1483,93 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
+  if item_type == "blog-api" then
+    if string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
+      local args = parse_args(url)
+      local user_id = args["user_id"]
+      local blog_id = args["blog_id"]
+      assert(type(user_id) == "string", user_id)
+      assert(type(blog_id) == "string", blog_id)
+      check(
+        "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+        .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog_id .. "xuite.blog.public.getTopArticle" .. user_id)
+        .. "&method=xuite.blog.public.getTopArticle"
+        .. "&blog_id=" .. blog_id
+        .. "&user_id=" .. user_id
+      )
+      check(
+        "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+        .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog_id .. "" .. "" .. "" .. "" .. "10" .. "xuite.blog.public.getArticles" .. "" .. "1" .. user_id)
+        .. "&method=xuite.blog.public.getArticles"
+        .. "&blog_id=" .. blog_id
+        .. "&user_id=" .. user_id
+        .. "&start=" .. "1"
+        .. "&limit=" .. "10"
+        .. "&blog_pw="
+        .. "&keyword="
+        .. "&category_id="
+        .. "&date="
+        .. "&month="
+      )
+      check(
+        "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+        .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog_id .. "" .. "xuite.blog.public.getBlogCategories" .. user_id)
+        .. "&method=xuite.blog.public.getBlogCategories"
+        .. "&blog_id=" .. blog_id
+        .. "&user_id=" .. user_id
+        .. "&blog_pw="
+      )
+      html = read_file(file)
+      local success, json = pcall(JSON.decode, JSON, html)
+      if not success then
+        print("TODO: handle the malformed API response. " .. url)
+        abort_item()
+      elseif string.match(url, "method=xuite%.blog%.public%.getArticles&") and json["ok"] then
+        local blog_id = string.match(url, "&blog_id=([0-9]+)")
+        local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
+        local start = string.match(url, "&start=([0-9]+)")
+        local limit = string.match(url, "&limit=([0-9]+)")
+        if json["rsp"]["total"] ~= nil then
+          assert(string.match(json["rsp"]["total"], "^[0-9]+$"))
+          start = tonumber(start)
+          if start + 9 < tonumber(json["rsp"]["total"]) then
+            start = string.format("%.0f", start + tonumber(limit))
+            check(
+              "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+              .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. blog_id .. "" .. "" .. "" .. "" .. limit .. "xuite.blog.public.getArticles" .. "" .. start .. user_id)
+              .. "&method=xuite.blog.public.getArticles"
+              .. "&blog_id=" .. blog_id
+              .. "&user_id=" .. user_id
+              .. "&start=" .. start
+              .. "&limit=" .. limit
+              .. "&blog_pw="
+              .. "&keyword="
+              .. "&category_id="
+              .. "&date="
+              .. "&month="
+            )
+          end
+        else
+          local articles_n = 0
+          for _, _ in pairs(json["rsp"]["articles"]) do articles_n = articles_n + 1 end
+          assert(articles_n == 0)
+        end
+        for _, article in pairs(json["rsp"]["articles"]) do
+          assert(string.match(article["article_id"], "^[0-9]+$"))
+          assert(string.match(article["access"], "^[0-9]$"), "Unknown article access: " .. article["access"])
+          local blog_url, article_id = string.match(article["url"], "^http://blog.xuite.net/[0-9A-Za-z._]+/([0-9A-Za-z]+)/([0-9]+)$")
+          assert(article_id == article["article_id"])
+          discover_article(user_id, blog_url, article_id, blog_id)
+          if article["access"] ~= "4" and article["access"] ~= "5" then
+            assert(article["thumb"] and article["thumb2"])
+            check(article["thumb2"])
+            check(article["thumb"])
+          end
+        end
+      end
+    end
+  end
+
   if item_type == "article" then
     -- article:pc
     if string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$")
@@ -1717,6 +1743,28 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           end
         end
       end
+    end
+  end
+
+  if item_type == "article-api" then
+    if string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
+      local args = parse_args(url)
+      local user_id = args["user_id"]
+      local blog_id = args["blog_id"]
+      local article_id = args["article_id"]
+      assert(type(user_id) == "string", user_id)
+      assert(type(blog_id) == "string", blog_id)
+      assert(type(article_id) == "string", article_id)
+      check(
+        "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+        .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. xuite_api_key .. article_id .. "" .. blog_id .. "" .. "xuite.blog.public.getArticle" .. user_id)
+        .. "&method=xuite.blog.public.getArticle"
+        .. "&blog_id=" .. blog_id
+        .. "&user_id=" .. user_id
+        .. "&article_id=" .. article_id
+        .. "&blog_pw="
+        .. "&article_pw="
+      )
     end
   end
 
@@ -2202,6 +2250,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     if string.match(url, "^https?://blog%.xuite%.net/_theme/ArticlePasswdExp%.php%?")
       or string.match(url, "^https?://blog%.xuite%.net/_theme/MessageShowExp%.php%?")
       or string.match(url, "^https?://blog%.xuite%.net/_theme/TrackBackShowExp%.php%?") then
+      is_html = true
+    elseif string.match(url, "^https?://api%.xuite%.net/api%.php%?") and string.match(url, "method=xuite%.blog%.public%.getArticle&") then
+      html = flatten_json(JSON:decode(html))
       is_html = true
     end
     if is_html then

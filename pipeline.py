@@ -44,24 +44,24 @@ class xuite_api():
     # API_KEY = base64.b64decode('YTlhNWM4NDRkZjkyZTYzMjM3OTQ4MWY4M2E3YjBlOWQ=').decode() # com.x---e.myX---e
     # SECRET_KEY = base64.b64decode('NDk0ODI2OTU1MQ==').decode()
 
-    # @staticmethod
-    # def api_sig(params: dict, api_key: str = API_KEY, secret_key: str = SECRET_KEY) -> str:
-    #     assert isinstance(params, dict) and isinstance(api_key, str) and isinstance(secret_key, str)
-    #     assert len(api_key) == 32 and len(secret_key) == 10
-    #     # Building a list of dictionary values, sorted by key https://stackoverflow.com/a/36634885
-    #     return hashlib.md5((''.join([secret_key, *[v for _, v in sorted({**params, 'api_key': api_key}.items())]])).encode()).hexdigest()
+    @staticmethod
+    def api_sig(params: dict, api_key: str = API_KEY, secret_key: str = SECRET_KEY) -> str:
+        assert isinstance(params, dict) and isinstance(api_key, str) and isinstance(secret_key, str)
+        assert len(api_key) == 32 and len(secret_key) == 10
+        # Building a list of dictionary values, sorted by key https://stackoverflow.com/a/36634885
+        return hashlib.md5((''.join([secret_key, *[v for _, v in sorted({**params, 'api_key': api_key}.items())]])).encode()).hexdigest()
 
-    # @staticmethod
-    # def api_url(api_parameters: dict) -> str:
-    #     assert isinstance(api_parameters, dict) and isinstance(api_parameters['method'], str) and api_parameters['method'].startswith('xuite.')
-    #     parameters = [
-    #         ('api_key', xuite_api.API_KEY),
-    #         ('api_sig', xuite_api.api_sig(api_parameters)),
-    #     ]
-    #     for key, value in api_parameters.items():
-    #         if key not in ['api_key', 'api_sig']:
-    #             parameters.append((key, value))
-    #     return f"https://api.xuite.net/api.php?{urllib.parse.urlencode(parameters)}"
+    @staticmethod
+    def api_url(api_parameters: dict) -> str:
+        assert isinstance(api_parameters, dict) and isinstance(api_parameters['method'], str) and api_parameters['method'].startswith('xuite.')
+        parameters = [
+            ('api_key', xuite_api.API_KEY),
+            ('api_sig', xuite_api.api_sig(api_parameters)),
+        ]
+        for key, value in api_parameters.items():
+            if key not in ['api_key', 'api_sig']:
+                parameters.append((key, value))
+        return f"https://api.xuite.net/api.php?{urllib.parse.urlencode(parameters)}"
 
     # @staticmethod
     # def bf():
@@ -126,7 +126,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230814.01'
+VERSION = '20230814.02'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -350,24 +350,32 @@ class WgetArgs(object):
             elif item_type == 'blog':
                 if item_value.count(':') == 1:
                     user_id, blog_url = item_value.split(':')
-                elif item_value.count(':') == 2:
-                    user_id, blog_url, blog_id = item_value.split(':')
-                    assert re.search(r'^[0-9]+$', blog_id), blog_id
-                    wget_args.extend(['--warc-header', 'xuite-blog-id: '+blog_id])
+                # elif item_value.count(':') == 2:
+                #     user_id, blog_url, blog_id = item_value.split(':')
+                #     assert re.search(r'^[0-9]+$', blog_id), blog_id
+                #     wget_args.extend(['--warc-header', 'xuite-blog-id: '+blog_id])
                 else:
                     raise ValueError(item_value)
                 assert re.search(r'^[0-9A-Za-z._]+$', user_id), user_id
                 assert re.search(r'^[0-9A-Za-z]+$', blog_url), blog_url
                 wget_args.extend(['--warc-header', 'xuite-blog-url: '+blog_url])
                 wget_args.append('https://blog.xuite.net/{}/{}'.format(user_id, blog_url))
+            elif item_type == 'blog-api':
+                assert item_value.count(':') == 1, item_value
+                user_id, blog_id = item_value.split(':')
+                wget_args.append(xuite_api.api_url({
+                    'method': 'xuite.blog.public.getTopArticle',
+                    'blog_id': blog_id,
+                    'user_id': user_id,
+                }))
             # blog article
             elif item_type == 'article':
                 if item_value.count(':') == 2:
                     user_id, blog_url, article_id = item_value.split(':')
-                elif item_value.count(':') == 3:
-                    user_id, blog_url, article_id, blog_id = item_value.split(':')
-                    assert re.search(r'^[0-9]+$', blog_id), blog_id
-                    wget_args.extend(['--warc-header', 'xuite-article-blog-id: '+blog_id])
+                # elif item_value.count(':') == 3:
+                #     user_id, blog_url, article_id, blog_id = item_value.split(':')
+                #     assert re.search(r'^[0-9]+$', blog_id), blog_id
+                #     wget_args.extend(['--warc-header', 'xuite-article-blog-id: '+blog_id])
                 else:
                     raise ValueError(item_value)
                 assert re.search(r'^[0-9A-Za-z._]+$', user_id), user_id
@@ -376,6 +384,17 @@ class WgetArgs(object):
                 wget_args.extend(['--warc-header', 'xuite-article-blog-url: '+blog_url])
                 wget_args.extend(['--warc-header', 'xuite-article-id: '+article_id])
                 wget_args.append('https://blog.xuite.net/{}/{}/{}'.format(user_id, blog_url, article_id))
+            elif item_type == 'article-api':
+                assert item_value.count(':') == 2, item_value
+                user_id, blog_id, article_id = item_value.split(':')
+                wget_args.append(xuite_api.api_url({
+                    'method': 'xuite.blog.public.getArticle',
+                    'blog_id': blog_id,
+                    'user_id': user_id,
+                    'article_id': article_id,
+                    'blog_pw': '',
+                    'article_pw': '',
+                }))
             # album
             elif item_type == 'album':
                 assert item_value.count(':') == 1, item_value
