@@ -384,7 +384,7 @@ allowed = function(url, parenturl)
       -- a strange behavior of article:mobile is that <a class="page-blogshow-random-link" href="..."> (隨機文章)
       -- sometimes gives (https://m.xuite.net)/blog/blog/{user_id}/{article_id} or deleted articles,
       -- and we knew that the user https://m.xuite.net/blog/blog (user:blog, user-sn:11731848)
-      -- has only one blog https://m.xuite.net/blog/blog/blog (blog:blog:blog:6063305, https://blog.xuite.net/blog/blog).
+      -- has only one blog https://m.xuite.net/blog/blog/blog (blog:blog:blog, blog-api:blog:6063305, https://blog.xuite.net/blog/blog).
       if match == "blog" and other1 ~= nil and other1 ~= "blog" then
         discover_user(nil, other1)
         match = nil
