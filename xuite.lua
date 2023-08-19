@@ -416,6 +416,9 @@ allowed = function(url, parenturl)
           discover_item(discovered_items, "asset:" .. urlcode.escape(match))
           -- also use blog.xuite.net/_users
           match = match:gsub("^https?://pic%.xuite%.net/", "http://blog.xuite.net/_users/", 1)
+        elseif string.match(match, "^https?://grm%.cdn%.hinet%.net/xuite/[0-9a-f]/?[0-9a-f]/") then
+          -- don't use grm.cdn.hinet.net/xuite but use blog.xuite.net/_users instead
+          match = match:gsub("^https?://grm%.cdn%.hinet%.net/xuite/", "http://blog.xuite.net/_users/", 1)
         elseif string.match(match, "^https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/") then
           -- don't use mms.blog.xuite.net but use blog.xuite.net/_users instead
           match = match:gsub("^https?://mms%.blog%.xuite%.net/", "http://blog.xuite.net/_users/", 1)
@@ -1318,7 +1321,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           or string.match(embed, "//[^/]*xuite%.com/")
           or string.match(embed, "//[^/]*xuite%.tw/")
           or string.match(embed, "^/[^/]") then
-          discover_item(discovered_items, "embed:" .. urlcode.escape(url))
+          check(embed)
         end
       end
       -- https://blog.xuite.net/_public/js/blog_01.js TemplateJS.item_main.main()
