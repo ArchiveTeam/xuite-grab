@@ -237,7 +237,6 @@ find_item = function(url)
     for _, pattern in pairs({
       "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://img%.xuite%.net/.+$",
-      "^https?://blog%.xuite%.net/_service/djshow/swf/[^/%.]+/",
       "^https?://blog%.xuite%.net/_service/djshow/mp3/",
       "^https?://blog%.xuite%.net/_service/slideshow/mp3/",
       "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+$",
@@ -367,7 +366,6 @@ allowed = function(url, parenturl)
     ["^(https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^https?://pic%.xuite%.net/thumb/(.+)$"]="pic-thumb",
     ["^(https?://img%.xuite%.net/.+)$"]="asset",
-    ["^(https?://blog%.xuite%.net/_service/djshow/swf/[^/%.]+/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_service/djshow/mp3/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_service/slideshow/mp3/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
@@ -2104,6 +2102,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local args = parse_args(url)
     local argc = 0
     for _, _ in pairs(args) do argc = argc + 1 end
+    -- 相簿Slideshow
     if string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshow%.swf%?")
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/pageshowA%.swf%?")
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/sideslideshow%.swf%?")
@@ -2121,6 +2120,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local user_id = args["id"] or args["user_id"]
       local album_id = args["album"] or args["album_id"]
       discover_album(user_id, album_id)
+    -- 變身錄音筆
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
       assert(args["server_url"] == "/_users", args["server_url"])
@@ -2131,28 +2131,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(args["act"] == "show", args["act"])
       assert(type(args["face_url"]) == "string")
       assert(argc == 8)
-    elseif string.match(url, "^https?://blog%.xuite%.net/_service/mtv/swf/main%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/mtv/", args["service_url"])
-      assert(type(args["ImageUrl"]) == "string")
-      assert(type(args["SoundUrl"]) == "string")
-      assert(args["act"] == "show", args["act"])
-      assert(argc == 6)
-    elseif string.match(url, "^https?://blog%.xuite%.net/_service/paint/swf/show%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/paint/", args["service_url"])
-      assert(args["act"] == "show", args["act"])
-      assert(argc == 4)
-    elseif string.match(url, "^https?://blog%.xuite%.net/_service/smallpaint/swf/main%.swf%?") then
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/smallpaint/", args["service_url"])
-      assert(args["save_url"] == "/_service/smallpaint/save.php", args["save_url"])
-      assert(args["list_url"] == "/_service/smallpaint/list.php", args["list_url"])
-      assert(type(args["bid"]) == "string" and string.match(args["bid"], "^[0-9]+$"), args["bid"])
-      assert(args["author"] == "Y" or args["author"] == "N", args["author"])
-      assert(argc == 6)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/action/.+%.swf$")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/front/.+%.swf$")
+      or string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/templet/.+%.swf$") then
+      -- do nothing
+    -- 自拍相片本
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
       assert(args["server_url"] == "/_users", args["server_url"])
@@ -2162,6 +2145,42 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(argc == 5)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/templet/.+%.swf$") then
       -- do nothing
+    -- 愛秀投影機
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/mtv/swf/main%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/mtv/", args["service_url"])
+      assert(type(args["ImageUrl"]) == "string")
+      assert(type(args["SoundUrl"]) == "string")
+      assert(args["act"] == "show", args["act"])
+      assert(argc == 6)
+    -- 快速變臉筆
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/snap/swf/main%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/snap/", args["service_url"])
+      assert(type(args["ImageUrl"]) == "string")
+      assert(args["act"] == "show", args["act"])
+      assert(argc == 5)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/snap/swf/templet/.+%.swf$") then
+      -- do nothing
+    -- 手寫塗鴉版
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/paint/swf/show%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/paint/", args["service_url"])
+      assert(args["act"] == "show", args["act"])
+      assert(argc == 4)
+    -- 留言塗鴉版
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/smallpaint/swf/main%.swf%?") then
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/smallpaint/", args["service_url"])
+      assert(args["save_url"] == "/_service/smallpaint/save.php", args["save_url"])
+      assert(args["list_url"] == "/_service/smallpaint/list.php", args["list_url"])
+      assert(type(args["bid"]) == "string" and string.match(args["bid"], "^[0-9]+$"), args["bid"])
+      assert(args["author"] == "Y" or args["author"] == "N", args["author"])
+      assert(argc == 6)
+    -- 電視牆
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/wall/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
       assert(args["server_url"] == "/_users", args["server_url"])
@@ -2235,11 +2254,6 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"] ~= "voice_filename" then
           check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]))
         end
-      elseif string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
-        assert(handler.root["NSS"]["SHOW_XML"])
-        assert(handler.root["NSS"]["MP3_XML"])
-      elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
-        assert(handler.root["DRAWDATA"]["PAINT"])
       elseif string.match(url, "blog_[0-9]+/slideshow/[0-9]+/flash_config%.xml$") then
         assert(handler.root["SS"]["A_XML"]["P_XML"])
         assert(type(handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]) == "string")
@@ -2253,6 +2267,19 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
         check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
         check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+      elseif string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
+        assert(handler.root["NSS"]["SHOW_XML"])
+        assert(handler.root["NSS"]["MP3_XML"])
+      elseif string.match(url, "blog_[0-9]+/snap/[0-9]+/flash_config%.xml$") then
+        assert(handler.root["SNAP"]["templetData"]["back"])
+        assert(handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"])
+        assert(handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"])
+        assert(handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"])
+        check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"]))
+        check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"]))
+        check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"]))
+      elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
+        assert(handler.root["DRAWDATA"]["PAINT"])
       elseif string.match(url, "blog_[0-9]+/tvwall/flash_config%.xml$") then
         assert(handler.root["WALL"]["PHO"])
         if handler.root["WALL"]["PHO"]["_attr"] then
