@@ -791,13 +791,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://my.xuite.net/service/account/api/external/sn_name.php?sn="..item_value.."&callback="..EXPANDO.."_"..TSTAMP.."&_="..TSTAMP)
       check("https://blog.xuite.net/_theme/snapshot/snapshot_avatar.php?mid="..item_value)
       local sn_hash = md5.sumhexa(item_value)
-      for _, asset_name in pairs({ "photo.jpg", "avatar.jpg" }) do
-        for _, sn_prefix in pairs({
-          (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"),
-          (sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/")
-        }) do
-          check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. item_value .. "/" .. asset_name)
-        end
+      for _, asset_name in pairs({ "photo.jpg", "avatar.jpg", "face.xml" }) do
+        local sn_prefix = sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/"
+        check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. item_value .. "/" .. asset_name)
       end
       check(url .. "/s")
     elseif string.match(url, "^https?://blog%.xuite%.net/_theme/snapshot/snapshot_avatar%.php%?mid=[0-9]+$") then
@@ -1256,12 +1252,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           discover_blog(user_id, blog["blog_name"], blog["blog_id"])
           local sn_hash = md5.sumhexa(user_sn_tbl[user_id])
           for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
-            for _, sn_prefix in pairs({
-              (sn_hash:sub(1,2).."/"..sn_hash:sub(3,4).."/"),
-              (sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/")
-            }) do
-              check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. user_sn_tbl[user_id] .. "/" .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
-            end
+            local sn_prefix = sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/"
+            check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. user_sn_tbl[user_id] .. "/" .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
           end
           check("http://blog.xuite.net/_theme/SmallPaintExp.php?mid=" .. user_sn_tbl[user_id] .. "&bid=" .. blog["blog_id"], "https://blog.xuite.net/" .. user_id .. "/" .. blog["blog_name"])
           check("http://blog.xuite.net/_service/smallpaint/swf/main.swf?server_url=/_users&service_url=/_service/smallpaint/&save_url=/_service/smallpaint/save.php&list_url=/_service/smallpaint/list.php&bid=" .. blog["blog_id"] .. "&author=N")
