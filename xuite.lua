@@ -237,6 +237,8 @@ find_item = function(url)
     for _, pattern in pairs({
       "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://img%.xuite%.net/.+$",
+      "^https?://blog%.xuite%.net/_service/djshow/swf/[^/%.]+/",
+      "^https?://blog%.xuite%.net/_service/djshow/mp3/",
       "^https?://blog%.xuite%.net/_service/slideshow/mp3/",
       "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://[0-9a-fs]%.blog%.xuite%.net/.+$",
@@ -365,6 +367,8 @@ allowed = function(url, parenturl)
     ["^(https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^https?://pic%.xuite%.net/thumb/(.+)$"]="pic-thumb",
     ["^(https?://img%.xuite%.net/.+)$"]="asset",
+    ["^(https?://blog%.xuite%.net/_service/djshow/swf/[^/%.]+/.+)$"]="asset",
+    ["^(https?://blog%.xuite%.net/_service/djshow/mp3/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_service/slideshow/mp3/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^(https?://[0-9a-fs]%.blog%.xuite%.net/.+)$"]="asset",
@@ -541,6 +545,7 @@ allowed = function(url, parenturl)
       or string.match(url, "%.mp4$") or string.match(url, "%.mp4%?[^?]*$")
       or string.match(url, "%.wav$") or string.match(url, "%.wav%?[^?]*$")
       or string.match(url, "%.mp3$") or string.match(url, "%.mp3%?[^?]*$")
+      or string.match(url, "%.wma$") or string.match(url, "%.wma%?[^?]*$")
       or string.match(url, "%.mid$") or string.match(url, "%.mid%?[^?]*$")
       or string.match(url, "%.css$") or string.match(url, "%.css%?[^?]*$")
       or string.match(url, "%.js$") or string.match(url, "%.js%?[^?]*$")
@@ -2113,6 +2118,16 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local user_id = args["id"] or args["user_id"]
       local album_id = args["album"] or args["album_id"]
       discover_album(user_id, album_id)
+    elseif string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/main%.swf%?") then
+      assert(type(args["xml_url"]) == "string")
+      assert(args["server_url"] == "/_users", args["server_url"])
+      assert(args["service_url"] == "/_service/djshow/", args["service_url"])
+      assert(args["face_swf_url"] == "/_service/face2", args["face_swf_url"])
+      assert(type(args["mp3path"]) == "string")
+      assert(type(args["txtpath"]) == "string")
+      assert(args["act"] == "show", args["act"])
+      assert(type(args["face_url"]) == "string")
+      assert(argc == 8)
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/mtv/swf/main%.swf%?") then
       assert(type(args["xml_url"]) == "string")
       assert(args["server_url"] == "/_users", args["server_url"])
@@ -2164,14 +2179,23 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         or string.match(args["xml_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/flash_config%.xml$"), args["xml_url"])
       check(urlparse.absolute("http://blog.xuite.net/", args["xml_url"]))
     end
+    if type(args["face_url"]) == "string" then
+      assert(string.match(args["face_url"], "^/.+/face%.xml$")
+        or string.match(args["face_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/face%.xml$"), args["face_url"])
+      check(urlparse.absolute("http://blog.xuite.net/", args["face_url"]))
+    end
     if type(args["ImageUrl"]) == "string" then
       for image in string.gmatch(args["ImageUrl"], "[^,]+") do
         check_assetUrl(image)
       end
     end
-    if type(args["SoundUrl"]) == "string" then
-      assert(select(2, args["SoundUrl"]:gsub(",", ",")) == 0)
-      check_assetUrl(args["SoundUrl"])
+    for _, arg_name in pairs({ "SoundUrl", "mp3path", "txtpath" }) do
+      if type(args[arg_name]) == "string" then
+        assert(select(2, args[arg_name]:gsub(",", ",")) == 0)
+        if string.len(args[arg_name]) >= 1 then
+          check_assetUrl(args[arg_name])
+        end
+      end
     end
   end
 
@@ -2189,7 +2213,26 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       local handler = xmlhandler:new()
       xml2lua.parser(handler):parse(html)
-      if string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
+      if string.match(url, "blog_[0-9]+/djshow/[0-9]+/flash_config%.xml$") then
+        assert(type(handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
+        assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]) == "string")
+        assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]) == "string")
+        assert(handler.root["AAAOE"]["AEB"]["aface_XML"])
+        if handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"] then
+          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
+        else
+          for _, O_PP in pairs(handler.root["AAAOE"]["AEB"]["O_PP"]) do
+            check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", O_PP["_attr"]["O_FP"]))
+          end
+        end
+        check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+        if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"] ~= "text_filename" then
+          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]))
+        end
+        if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"] ~= "voice_filename" then
+          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]))
+        end
+      elseif string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
         assert(handler.root["NSS"]["SHOW_XML"])
         assert(handler.root["NSS"]["MP3_XML"])
       elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
@@ -2220,6 +2263,16 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         error("Unrecognized occurrence of flash_config.xml")
       elseif string.match(url, "blog_[0-9]+/smallpaint/[0-9]+%.xml$") then
         assert(handler.root["DRAWDATA"]["PAINT"])
+      elseif string.match(url, "/[0-9]+/face%.xml$") then
+        for key, obj in pairs(handler.root["MYPLAY"]) do
+          if key ~= "_attr" then
+            assert(type(obj["_attr"]["E_UR"]) == "string")
+            if string.len(obj["_attr"]["E_UR"]) >= 1 then
+              assert(string.match(obj["_attr"]["E_UR"], "^swf/[^/%.%?&=]+%.swf"), obj["_attr"]["E_UR"])
+              check(urlparse.absolute("http://blog.xuite.net/_service/face2/", obj["_attr"]["E_UR"]))
+            end
+          end
+        end
       else
         error("Unrecognized occurrence of XML file")
       end
