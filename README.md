@@ -1,6 +1,6 @@
 # xuite-grab
 
-More information about the archiving project can be found on the ArchiveTeam wiki: [Xuite](https://wiki.archiveteam.org/index.php/Xuite)
+More information about the archiving project can be found on the ArchiveTeam wiki: [Xuite 隨意窩](https://wiki.archiveteam.org/index.php?title=Xuite 隨意窩)
 
 ## Setup instructions
 
@@ -23,7 +23,7 @@ We strongly encourage you to join the IRC channel associated with this project i
 
 #### Archive Team Warrior (recommended for most users)
 
-This and other archiving projects can easily be run using the [Archive Team Warrior](https://wiki.archiveteam.org/index.php/ArchiveTeam_Warrior) virtual machine. Follow the [instructions on the Archive Team wiki](https://wiki.archiveteam.org/index.php/ArchiveTeam_Warrior) for installing the Warrior, and from the web interface running at `http://localhost:8001/`, enter the nickname that you want to be shown as on the tracker. There is no registration, just pick a nickname you like. Then, select the `Xuite` project in the Warrior interface.
+This and other archiving projects can easily be run using the [Archive Team Warrior](https://wiki.archiveteam.org/index.php/ArchiveTeam_Warrior) virtual machine. Follow the [instructions on the Archive Team wiki](https://wiki.archiveteam.org/index.php/ArchiveTeam_Warrior) for installing the Warrior, and from the web interface running at `http://localhost:8001/`, enter the nickname that you want to be shown as on the tracker. There is no registration, just pick a nickname you like. Then, select the `Xuite 隨意窩` project in the Warrior interface.
 
 #### Project-specific Docker container (for more advanced users)
 
@@ -39,6 +39,10 @@ after which the project container can be run:
 
 Be sure to replace `YOURNICKHERE` with the nickname that you want to be shown as on the tracker. There is no registration, just pick a nickname you like.
 
+### Supporting Archive Team
+
+Behind the scenes Archive Team has infrastructure to run the projects and process the data with. If you would like to help out with the costs of our infrastructure, a donation on our [Open Collective](https://opencollective.com/archiveteam) would be very welcome.
+
 ### Issues in the code
 
 If you notice a bug and want to file a bug report, please use the GitHub issues tracker.
@@ -48,3 +52,5 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 ### Other problems
 
 Have an issue not listed here? Join us on IRC and ask! We can be found at hackint IRC [#sweet](https://webirc.hackint.org/#irc://irc.hackint.org/#sweet).
+
+
