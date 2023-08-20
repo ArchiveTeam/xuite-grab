@@ -125,7 +125,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230820.04'
+VERSION = '20230820.05'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -409,8 +409,9 @@ class WgetArgs(object):
                 assert re.search(r'^[0-9A-Za-z._]+$', user_id), user_id
                 assert re.search(r'^[0-9]+$', album_id), album_id
                 assert re.search(r'^[0-9]+$', photo_serial), photo_serial
+                wget_args.extend(['--header', 'Cookie: exif=1'])
                 wget_args.extend(['--warc-header', 'xuite-photo-album-id: '+album_id])
-                wget_args.append('https://m.xuite.net/photo/{}/{}/{}'.format(user_id, album_id, photo_serial))
+                wget_args.append('https://photo.xuite.net/{}/{}/{}.jpg'.format(user_id, album_id, photo_serial))
             # vlog
             elif item_type == 'vlog':
                 assert base64.b64decode(item_value, None, True), item_value

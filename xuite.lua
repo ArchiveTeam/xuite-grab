@@ -144,6 +144,13 @@ discover_album = function(uid, aid)
   discover_item(discovered_items, "album:" .. uid .. ":" .. aid)
 end
 
+discover_photo = function(uid, aid, serial)
+  assert(string.match(uid, "^[0-9A-Za-z._]+$"))
+  assert(string.match(aid, "^[0-9]+$"))
+  assert(string.match(serial, "^[0-9]+$"))
+  discover_item(discovered_items, "photo:" .. uid .. ":" .. aid .. ":" .. serial)
+end
+
 discover_vlog = function(vlogid)
   assert(string.match(vlogid, "^[0-9A-Za-z=]+$"))
   -- generate correctly padded canonical vlogid
@@ -209,7 +216,7 @@ find_item = function(url)
     type_ = "album"
   end
   if not value then
-    local uid, aid, serial = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)/([0-9]+)$")
+    local uid, aid, serial = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg$")
     if uid and aid and serial then
       value = uid .. ":" .. aid .. ":" .. serial
     end
@@ -420,6 +427,9 @@ allowed = function(url, parenturl)
       elseif type_ == "album" then
         discover_album(match, other1)
         match = match .. ":" .. other1
+      elseif type_ == "photo" then
+        discover_photo(match, other1, other2)
+        match = match .. ":" .. other1 .. ":" .. other2
       elseif type_ == "photo-orig" then
         discover_album(match, other1)
         return (item_type == "photo") and true or false
@@ -716,6 +726,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           headers={
             ["Cookie"] = "exif=1",
             ["Referer"] = "https://m.xuite.net/"
+          }
+        })
+      elseif string.match(url_, "^https?://o%.[0-9a-f]%.photo%.xuite%.net/") then
+        table.insert(urls, {
+          url=url_,
+          headers={
+            ["Referer"] = "https://photo.xuite.net/"
           }
         })
       elseif referer then
@@ -1875,12 +1892,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 
   if item_type == "photo" then
     if string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg$") then
-      local user_id = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z._]+)/[0-9]+/[0-9]+%.jpg$")
+      local user_id, album_id, serial = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z._]+)/([0-9]+)/([0-9]+)%.jpg$")
       html = read_file(file)
       for uid in string.gmatch(html, "<a class=\"single%-comment%-user%-name\" href=\"//photo%.xuite%.net/([0-9A-Za-z._]+)\" target=\"_blank\" >") do
         discover_user(nil, uid)
       end
-      -- local serial = string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/([0-9]+)%.jpg$")
       local img_prefix, img_suffix = string.match(html, "<img class=\"single%-show%-image \" src=\"(https://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[xlmstqQ](%.[^.\"]+)\" alt=\"[^<>]*\"></div>")
       if not img_prefix or not img_suffix then
         img_prefix, img_suffix = string.match(html, "<img class=\"single%-show%-image fixed\" src=\"(https://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[xlmstqQ](%.[^.\"]+)\" alt=\"[^<>]*\"></div>")
@@ -1903,13 +1919,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check(img_prefix .. "Q" .. img_suffix, "https://photo.xuite.net/")
       -- https://photo.xuite.net/javascripts/picture_single.comb.js $("#single-more #single-more-title").click(); $.post()
       -- Although Cookie exif=1 is set to get the Exif included in the HTML, we also make this POST request
-      if string.match(html, "<div id=\"single%-more%-title\" ><a href=\"javascript:;\" >更多相片資訊</a></div>") then
+      if string.match(html, "<div id=\"single%-more%-title\" ><a href=\"javascript:;\" >更多相片資訊</a></div>") and not string.match(html, "<div id=\"single%-more\"  style=\"display:none\">") then
         table.insert(urls, {
           url="https://photo.xuite.net/_picinfo/exif",
           headers={ ["Origin"] = "https://photo.xuite.net", ["Referer"] = url, ["X-Requested-With"] = "XMLHttpRequest" },
           post_data="picture_id=" .. picture_id .. "&user_id=" .. user_id
         })
       end
+      check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. serial)
     elseif string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg/sizes/o/$") then
       html = read_file(file)
       local img_orig = string.match(html, "<a href=\"[^\"<>]+\"><img src=\"(//o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.[^.\"]+)\" alt=\"\" class=\"[^\"<>]*\"></a>")
