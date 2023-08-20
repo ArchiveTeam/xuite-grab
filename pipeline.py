@@ -296,6 +296,7 @@ class WgetArgs(object):
             '--hosts-file', '/dev/null',
             '--resolvconf-file', '/dev/null',
             '--dns-servers', '9.9.9.10,149.112.112.10,2620:fe::10,2620:fe::fe:10',
+            '--reject-reserved-subnets',
             '--content-on-error',
             '--no-http-keep-alive',
             '--no-cookies',
@@ -454,7 +455,7 @@ class WgetArgs(object):
 project = Project(
     title=TRACKER_ID,
     project_html='''
-        <img class="project-logo" alt="Project logo" src="https://wiki.archiveteam.org/images/2/29/Xuite-logo.png" height="50px" title=""/>
+        <img class="project-logo" alt="Project logo" src="https://wiki.archiveteam.org/images/6/68/Xuite-icon.png" height="50px" title=""/>
         <h2>xuite.net <span class="links"><a href="https://xuite.net/">Website</a> &middot; <a href="http://tracker.archiveteam.org/#/">Leaderboard</a> &middot; <a href="https://wiki.archiveteam.org/index.php/Xuite">Wiki</a></span></h2>
         <p>Archive Xuite.</p>
     ''',
