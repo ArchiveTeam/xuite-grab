@@ -329,6 +329,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/[A-Za-z_]+%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "/%${[A-Za-z%$%[%]_]+}%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "^https?://api%.xuite%.net/\\\"https?:\\/\\/.+\\\"$")
+    or string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]*/\"http")
     or string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]*/?\\/\\/vlog%.xuite%.net")
     or not string.match(url, "^https?://") then
     return false
