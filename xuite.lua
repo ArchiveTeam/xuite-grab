@@ -2559,9 +2559,9 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
   file:close()
 
   for key, data in pairs({
-    ["xuite-0000000000000000"] = discovered_items,
-    ["xuite-data-0000000000000000"] = discovered_data,
-    ["urls-0000000000000000"] = discovered_outlinks
+    ["xuite-tvkqxccsx12r6p6r"] = discovered_items,
+    ["xuite-data-sxl4wzibk75ebw5l"] = discovered_data,
+    ["urls-1xz0wiu8vhh66k9q"] = discovered_outlinks
   }) do
     print('queuing for', string.match(key, "^(.+)%-"))
     local items = nil
