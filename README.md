@@ -1,6 +1,6 @@
 # xuite-grab
 
-More information about the archiving project can be found on the ArchiveTeam wiki: [Xuite 隨意窩](https://wiki.archiveteam.org/index.php?title=Xuite 隨意窩)
+More information about the archiving project can be found on the ArchiveTeam wiki: [Xuite 隨意窩](https://wiki.archiveteam.org/index.php?title=Xuite_隨意窩)
 
 ## Setup instructions
 
