@@ -209,6 +209,13 @@ find_item = function(url)
     type_ = "album"
   end
   if not value then
+    local uid, aid, serial = string.match(url, "^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)/([0-9]+)$")
+    if uid and aid and serial then
+      value = uid .. ":" .. aid .. ":" .. serial
+    end
+    type_ = "photo"
+  end
+  if not value then
     value = string.match(url, "^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$")
     type_ = "vlog"
   end
@@ -239,6 +246,7 @@ find_item = function(url)
       "^https?://img%.xuite%.net/.+$",
       "^https?://blog%.xuite%.net/_service/djshow/mp3/",
       "^https?://blog%.xuite%.net/_service/slideshow/mp3/",
+      "^https?://blog%.xuite%.net/_theme/skin/",
       "^https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://[0-9a-fs]%.blog%.xuite%.net/.+$",
       "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+$",
@@ -331,7 +339,7 @@ allowed = function(url, parenturl)
     ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)$"]="user",
     ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)%?t=tag&p=[0-9a-f]+$"]="user",
     ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)$"]="album",
-    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)/[0-9]+$"]="album",
+    ["^https?://m%.xuite%.net/photo/([0-9A-Za-z._]+)/([0-9]+)/([0-9]+)$"]="photo",
     ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)$"]="user",
     ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?vt=[01]$"]="user",
     ["^https?://m%.xuite%.net/vlog/([0-9A-Za-z._]+)%?t=cat&p=/[0-9]+&dir_num=all$"]="user",
@@ -341,6 +349,8 @@ allowed = function(url, parenturl)
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?&p=[0-9]+$"]="blog",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?st=c&p=[0-9]+&w=[0-9]+$"]="blog",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/?%?st=c&w=[0-9]+&p=[0-9]+$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/rss%.xml$"]="blog",
+    ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/atom%.xml$"]="blog",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/expert%-view$"]="blog",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/list%-view$"]="blog",
     ["^https?://blog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9A-Za-z]+)/snapshot%-view$"]="blog",
@@ -356,8 +366,8 @@ allowed = function(url, parenturl)
     ["^https?://photo%.xuite%.net/_category%?st=search&uid=([0-9A-Za-z._]+)&sk=[^%?&=]+%*[0-9]+$"]="user",
     ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
     ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$"]="album",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/[0-9]+%.jpg$"]="album",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/[0-9]+%.jpg/sizes/[oxlmst]/$"]="album",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg$"]="photo",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg/sizes/[oxlmst]/$"]="photo",
     ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
     ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)%?vt=[01]$"]="user",
     ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
@@ -368,12 +378,13 @@ allowed = function(url, parenturl)
     ["^(https?://img%.xuite%.net/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_service/djshow/mp3/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_service/slideshow/mp3/.+)$"]="asset",
+    ["^(https?://blog%.xuite%.net/_theme/skin/.+)$"]="asset",
     ["^(https?://blog%.xuite%.net/_users/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^(https?://[0-9a-fs]%.blog%.xuite%.net/.+)$"]="asset",
     ["^(https?://mms%.blog%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+)$"]="asset",
     ["^(https?://[0-9a-f]%.mms%.blog%.xuite%.net/.+)$"]="asset",
     ["^(https?://[0-9a-fs]%.photo%.xuite%.net/.+)$"]="asset",
-    ["^https?://o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/"]="album",
+    ["^https?://o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/"]="photo-orig",
     ["^(https?://[0-9a-f]%.share%.photo%.xuite%.net/.+)$"]="asset",
     ["^(https?://vlog%.xuite%.net/media/.+)$"]="asset",
     ["^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/video/[0-9A-Za-z.][0-9A-Za-z._]*/([0-9A-Za-z=]+)%?"]="vlog"
@@ -391,7 +402,9 @@ allowed = function(url, parenturl)
         discover_user(nil, other1)
         match = nil
       end
-    elseif type_ == "blog" or type_ == "album" then
+    elseif type_ == "photo" then
+      match, other1, other2 = string.match(url, pattern)
+    elseif type_ == "blog" or type_ == "album" or type_ == "photo-orig" then
       match, other1 = string.match(url, pattern)
     else
       match = string.match(url, pattern)
@@ -407,6 +420,9 @@ allowed = function(url, parenturl)
       elseif type_ == "album" then
         discover_album(match, other1)
         match = match .. ":" .. other1
+      elseif type_ == "photo-orig" then
+        discover_album(match, other1)
+        return (item_type == "photo") and true or false
       elseif type_ == "vlog" then
         match = discover_vlog(match)
       elseif type_ == "asset" then
@@ -1824,8 +1840,41 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
         check("https://m.xuite.net/rpc/photo?method=loadPhotos&userId=" .. user_id .. "&albumId=" .. album_id ..  "&limit=24&offset=" .. string.format("%.0f", tonumber(offset) + photos_n), referer)
       end
-    -- album:photo
-    elseif string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg$") then
+    -- album:API
+    elseif string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
+      html = read_file(file)
+      local json = JSON:decode(html)
+      if string.match(url, "method=xuite%.photo%.public%.getPhotos&") and json["ok"] then
+        local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
+        local album_id = string.match(url, "&album_id=([0-9]+)")
+        local start = string.match(url, "&start=([0-9]+)")
+        local photos_n = 0
+        for _, photo in pairs(json["rsp"]["photos"]) do
+          assert(string.match(photo["position"], "^[0-9]+$"))
+          local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
+          check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. photo["position"], referer)
+          check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", "https://m.xuite.net/")
+          photos_n = photos_n + 1
+        end
+        if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and photos_n >= 1 then
+          start = string.format("%.0f", tonumber(start) + 500)
+          check(
+            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
+            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. album_id .. xuite_api_key .. "500" .. "xuite.photo.public.getPhotos" .. "" .. start .. user_id)
+            .. "&method=xuite.photo.public.getPhotos"
+            .. "&user_id=" .. user_id
+            .. "&album_id=" .. album_id
+            .. "&pw="
+            .. "&start=" .. start
+            .. "&limit=" .. "500"
+          )
+        end
+      end
+    end
+  end
+
+  if item_type == "photo" then
+    if string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg$") then
       local user_id = string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z._]+)/[0-9]+/[0-9]+%.jpg$")
       html = read_file(file)
       for uid in string.gmatch(html, "<a class=\"single%-comment%-user%-name\" href=\"//photo%.xuite%.net/([0-9A-Za-z._]+)\" target=\"_blank\" >") do
@@ -1867,35 +1916,6 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(img_orig, "Could not find the original resolution of the photo. " .. url)
       -- must be requested with a valid referrer header!
       check("https:" .. img_orig, "https://photo.xuite.net/")
-    elseif string.match(url, "^https?://api%.xuite%.net/api%.php%?") then
-      html = read_file(file)
-      local json = JSON:decode(html)
-      if string.match(url, "method=xuite%.photo%.public%.getPhotos&") and json["ok"] then
-        local user_id = string.match(url, "&user_id=([0-9A-Za-z._]+)")
-        local album_id = string.match(url, "&album_id=([0-9]+)")
-        local start = string.match(url, "&start=([0-9]+)")
-        local photos_n = 0
-        for _, photo in pairs(json["rsp"]["photos"]) do
-          assert(string.match(photo["position"], "^[0-9]+$"))
-          local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
-          check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. photo["position"], referer)
-          check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", "https://m.xuite.net/")
-          photos_n = photos_n + 1
-        end
-        if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and photos_n >= 1 then
-          start = string.format("%.0f", tonumber(start) + 500)
-          check(
-            "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
-            .. "&api_sig=" .. md5.sumhexa(xuite_secret_key .. album_id .. xuite_api_key .. "500" .. "xuite.photo.public.getPhotos" .. "" .. start .. user_id)
-            .. "&method=xuite.photo.public.getPhotos"
-            .. "&user_id=" .. user_id
-            .. "&album_id=" .. album_id
-            .. "&pw="
-            .. "&start=" .. start
-            .. "&limit=" .. "500"
-          )
-        end
-      end
     end
   end
 

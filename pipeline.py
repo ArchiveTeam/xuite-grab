@@ -403,6 +403,14 @@ class WgetArgs(object):
                 assert re.search(r'^[0-9]+$', album_id), album_id
                 wget_args.extend(['--warc-header', 'xuite-album-id: '+album_id])
                 wget_args.append('https://m.xuite.net/photo/{}/{}'.format(user_id, album_id))
+            elif item_type == 'photo':
+                assert item_value.count(':') == 2, item_value
+                user_id, album_id, photo_serial = item_value.split(':')
+                assert re.search(r'^[0-9A-Za-z._]+$', user_id), user_id
+                assert re.search(r'^[0-9]+$', album_id), album_id
+                assert re.search(r'^[0-9]+$', photo_serial), photo_serial
+                wget_args.extend(['--warc-header', 'xuite-photo-album-id: '+album_id])
+                wget_args.append('https://m.xuite.net/photo/{}/{}/{}'.format(user_id, album_id, photo_serial))
             # vlog
             elif item_type == 'vlog':
                 assert base64.b64decode(item_value, None, True), item_value
