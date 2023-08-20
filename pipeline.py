@@ -125,7 +125,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230820.02'
+VERSION = '20230820.03'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -455,7 +455,7 @@ project = Project(
     title=TRACKER_ID,
     project_html='''
         <img class="project-logo" alt="Project logo" src="https://wiki.archiveteam.org/images/6/68/Xuite-icon.png" height="50px" title=""/>
-        <h2>xuite.net <span class="links"><a href="https://xuite.net/">Website</a> &middot; <a href="http://tracker.archiveteam.org/#/">Leaderboard</a> &middot; <a href="https://wiki.archiveteam.org/index.php/Xuite">Wiki</a></span></h2>
+        <h2>xuite.net <span class="links"><a href="https://xuite.net/">Website</a> &middot; <a href="http://tracker.archiveteam.org/xuite/">Leaderboard</a> &middot; <a href="https://wiki.archiveteam.org/index.php/Xuite">Wiki</a></span></h2>
         <p>Archive Xuite.</p>
     ''',
     utc_deadline = datetime.datetime(2023, 8, 31, 6, 0, 0)
