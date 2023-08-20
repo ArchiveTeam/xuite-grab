@@ -472,9 +472,9 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://photo%.xuite%.net/_pic/[0-9A-Za-z._]+/[0-9]+/[0-9]+_[A-Za-z]%.jpg/redir")
     or string.match(url, "^https?://photo%.xuite%.net/_r9009/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg")
     or string.match(url, "^https?://photo%.xuite%.net/@tag_lib_js$")
-    or string.match(url, "^https?://vlog.xuite.net/_api/media/playcheck/media/[0-9A-Za-z=]+$")
-    or string.match(url, "^https?://vlog.xuite.net/flash/player%?media=[0-9A-Za-z=]+$")
-    or string.match(url, "^https?://vlog.xuite.net/flash/audioplayer%?media=[0-9A-Za-z=]+$")
+    or string.match(url, "^https?://vlog%.xuite%.net/_api/media/playcheck/media/[0-9A-Za-z=]+$")
+    or string.match(url, "^https?://vlog%.xuite%.net/flash/player%?media=[0-9A-Za-z=]+$")
+    or string.match(url, "^https?://vlog%.xuite%.net/flash/audioplayer%?media=[0-9A-Za-z=]+$")
     or string.match(url, "^https?://my%.xuite%.net/api/visitor2xml%.php%?")
     -- Original resolution photos require a valid Referer header
     or string.match(url, "^https?://o%.[0-9a-f]%.photo%.xuite%.net/")
@@ -2368,15 +2368,28 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if not item_name then
     error("No item name found.")
   end
+  if status_code == 500 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=500$")
+    or status_code == 502 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=502$") then
+    retry_url = true
+    return false
+  end
   -- no need to save known error pages that have been saved thousands of times
   if string.match(url["url"], "^https?://my%.xuite%.net/error%.php%?") then
     local err_url = url["url"]
-    if string.match(err_url, "%?channel=www&ecode=404$")
+    if string.match(err_url, "%?ecode=403$")
+      or string.match(err_url, "%?ecode=404$")
+      or string.match(err_url, "%?ecode=500$")
+      or string.match(err_url, "%?ecode=502$")
+      or string.match(err_url, "%?channel=www&ecode=404$")
       or string.match(err_url, "%?channel=www&ecode=NoAccount$")
       or string.match(err_url, "%?channel=www&ecode=Nodata$")
-      or string.match(err_url, "%channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=文章不存在$")
+      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=此日誌開放設定為被隱藏!!$")
+      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=文章不存在$")
       or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=資料錯誤$")
-      or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=抱歉，您瀏覽的影音不存在或為不公開!!$") then
+      or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite相簿訊息&info=這本相簿不存在或為不公開相簿喔!!$")
+      or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite相簿訊息&info=沒這張照片喔!!$")
+      or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=抱歉，您瀏覽的影音不存在或為不公開!!$")
+      or string.match(err_url, "%?channel=yo&ecode=UserDefine&title=參數錯誤&info=參數錯誤$") then
       return false
     -- vlog file session key has expired
     elseif string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=影音認證碼錯誤$") then
@@ -2395,30 +2408,45 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
   -- must be valid JSON
   elseif string.match(url["url"], "^https?://api%.xuite%.net/api%.php%?")
-    or (string.match(url["url"], "^https?://blog%.xuite%.net/_theme/[A-Za-z]+%.php%?")
-      and not string.match(url["url"], "^https?://blog%.xuite%.net/_theme/SmallPaintExp%.php%?")) then
+    or (string.match(url["url"], "^https?://blog%.xuite%.net/_theme/[A-Za-z]+%.php%?") and not string.match(url["url"], "^https?://blog%.xuite%.net/_theme/SmallPaintExp%.php%?"))
+    or string.match(url["url"], "^https?://m%.xuite%.net/rpc/search%?")
+    or string.match(url["url"], "^https?://m%.xuite%.net/rpc/blog%?method=loadMoreArticles&")
+    or string.match(url["url"], "^https?://m%.xuite%.net/rpc/blog%?method=loadComment&")
+    or string.match(url["url"], "^https?://m%.xuite%.net/rpc/photo%?method=loadAlbums&")
+    or string.match(url["url"], "^https?://m%.xuite%.net/rpc/photo%?method=loadPhotos&")
+    or string.match(url["url"], "^https?://m%.xuite%.net/rpc/vlog%?method=loadComment&")
+    or string.match(url["url"], "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&")
+    or string.match(url["url"], "^https?://photo%.xuite%.net/_feed/album%?")
+    or string.match(url["url"], "^https?://photo%.xuite%.net/_feed/photo%?")
+    or string.match(url["url"], "^https?://photo%.xuite%.net/_friends$")
+    or string.match(url["url"], "^https?://photo%.xuite%.net/@tag_lib_js$") then
     if status_code == 200 then
       local html = read_file(http_stat["local_file"])
+      if not string.match(html, "^{.+}$") then
+        retry_url = true
+        return false
+      end
       local json = JSON:decode(html)
       if json == nil then
         retry_url = true
         return false
       end
-    end
-  elseif string.match(url["url"], "^https?://m%.xuite%.net/rpc/search%?") then
-    local html = read_file(http_stat["local_file"])
-    local json = JSON:decode(html)
-    if (json == nil and html == "null") or (json and json["ok"] == false and json["msg"] == "Read timed out after 10 seconds") then
-      print(html)
-      retry_url = true
-      return false
-    end
-    if string.match(url["url"], "%?method=account") and json and json["ok"] == true then
-      local items_n = 0
-      for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
-      return items_n >= 2
-    else
-      return false
+      if string.match(url["url"], "^https?://m%.xuite%.net/rpc/search%?") then
+        if (json and json["ok"] == false and json["msg"] == "Read timed out after 10 seconds") then
+          print(html)
+          retry_url = true
+          return false
+        end
+        if string.match(url["url"], "%?method=account") and json and json["ok"] == true then
+          local items_n = 0
+          for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
+          return items_n >= 2
+        else
+          return false
+        end
+      end
+    elseif status_code == 403 then
+      return true
     end
   elseif string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
     return false
