@@ -2479,6 +2479,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
           return false
         end
       end
+    elseif status_code == 302 then
+      print("The response should be JSON instead of " .. newloc)
+      retry_url = true
+      return false
     elseif status_code == 403 then
       return true
     end
