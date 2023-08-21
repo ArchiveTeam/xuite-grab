@@ -1623,58 +1623,62 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
         -- if (index == "" && location.hash != '#message_header') { mid = location.hash.replace("#",""); }
         local Mmid = ""
-        assert(Maid and Mbid and Muid and Ma_author_id, "Cannot find Message() arguments from " .. url)
-        assert(Taid and Tb_login and Tb_url and Tmid and Tbid and Ta_author_id and Ttrack_flag, "Cannot find TrackBack() arguments from " .. url)
-        assert(Maid == Taid)
-        assert(Maid == article_id and Taid == article_id)
-        assert(Mbid == Tbid)
-        assert(Muid == Tmid)
-        -- Muid and Ma_author_id may be different, because the blog owner can grant permission to other users to publish articles
-        assert(Ma_author_id == Ta_author_id)
-        assert(Tb_login == user_id)
-        assert(Tb_url == blog_url)
-        user_id_tbl[Muid] = user_id
-        blog_url_tbl[Mbid] = blog_url
-        -- function getArticleDetailCounter(json){}
-        check(
-          "https://blog.xuite.net/_theme/ArticleDetailCounterExp.php"
-          .. "?aid=" .. article_id
-          .. "&ga=" .. TSTAMP
-        , url)
-        check(
-          "https://blog.xuite.net/_theme/TrackBackShowExp.php"
-          .. "?aid=" .. Taid
-          .. "&b_login=" .. Tb_login
-          .. "&b_url=" .. Tb_url
-          .. "&mid=" .. Tmid
-          .. "&bid=" .. Tbid
-          .. "&a_author_id=" .. Ta_author_id
-          .. "&track_flag=" .. Ttrack_flag
-          .. "&index="
-          .. "&ga=" .. TSTAMP
-        , url)
-        check(
-          "https://blog.xuite.net/_theme/MessageShowExp.php"
-          .. "?ver=new"
-          .. "&aid=" .. Maid
-          .. "&uid=" .. Muid
-          .. "&bid=" .. Mbid
-          .. "&a_author_id=" .. Ma_author_id
-          .. "&index=" .. "1"
-          .. "&mid=" .. Mmid
-          .. "&ga=" .. TSTAMP
-        , url)
-        check(
-          "https://blog.xuite.net/_theme/MessageShowExp.php"
-          .. "?ver=new"
-          .. "&aid=" .. Maid
-          .. "&uid=" .. Muid
-          .. "&bid=" .. Mbid
-          .. "&a_author_id=" .. Ma_author_id
-          .. "&index="
-          .. "&mid=" .. Mmid
-          .. "&ga=" .. TSTAMP
-        , url)
+        if string.match(html, "<html itemscope=\"itemscope\" itemtype=\"http://schema%.org/Blog\">") then
+          assert(Maid and Mbid and Muid and Ma_author_id, "Cannot find Message() arguments from " .. url)
+          assert(Taid and Tb_login and Tb_url and Tmid and Tbid and Ta_author_id and Ttrack_flag, "Cannot find TrackBack() arguments from " .. url)
+          assert(Maid == Taid)
+          assert(Maid == article_id and Taid == article_id)
+          assert(Mbid == Tbid)
+          assert(Muid == Tmid)
+          -- Muid and Ma_author_id may be different, because the blog owner can grant permission to other users to publish articles
+          assert(Ma_author_id == Ta_author_id)
+          assert(Tb_login == user_id)
+          assert(Tb_url == blog_url)
+          user_id_tbl[Muid] = user_id
+          blog_url_tbl[Mbid] = blog_url
+          -- function getArticleDetailCounter(json){}
+          check(
+            "https://blog.xuite.net/_theme/ArticleDetailCounterExp.php"
+            .. "?aid=" .. article_id
+            .. "&ga=" .. TSTAMP
+          , url)
+          check(
+            "https://blog.xuite.net/_theme/TrackBackShowExp.php"
+            .. "?aid=" .. Taid
+            .. "&b_login=" .. Tb_login
+            .. "&b_url=" .. Tb_url
+            .. "&mid=" .. Tmid
+            .. "&bid=" .. Tbid
+            .. "&a_author_id=" .. Ta_author_id
+            .. "&track_flag=" .. Ttrack_flag
+            .. "&index="
+            .. "&ga=" .. TSTAMP
+          , url)
+          check(
+            "https://blog.xuite.net/_theme/MessageShowExp.php"
+            .. "?ver=new"
+            .. "&aid=" .. Maid
+            .. "&uid=" .. Muid
+            .. "&bid=" .. Mbid
+            .. "&a_author_id=" .. Ma_author_id
+            .. "&index=" .. "1"
+            .. "&mid=" .. Mmid
+            .. "&ga=" .. TSTAMP
+          , url)
+          check(
+            "https://blog.xuite.net/_theme/MessageShowExp.php"
+            .. "?ver=new"
+            .. "&aid=" .. Maid
+            .. "&uid=" .. Muid
+            .. "&bid=" .. Mbid
+            .. "&a_author_id=" .. Ma_author_id
+            .. "&index="
+            .. "&mid=" .. Mmid
+            .. "&ga=" .. TSTAMP
+          , url)
+        else
+          assert(new_locations[url], url)
+        end
       end
       if string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$") then
         for _, asset_name in pairs({ "cover.jpg", "cover200.jpg", "cover400.jpg", "cover600.jpg" }) do
@@ -2094,40 +2098,40 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       local json = JSON:decode(html)
       if json and json["ok"] then
-        local items_n = 0
-        for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
-        if method == "blog" or method == "vlog" then
-          if json["rsp"]["_ismore"] == true then
-            assert(limit == items_n - 1)
-            check(
-              "https://m.xuite.net/rpc/search?method=" .. method
-              .. "&kw=" .. kw
-              .. "&offset=" .. string.format("%.0f", offset + limit)
-              .. "&limit=" .. string.format("%.0f", limit)
-            )
-          else
-            assert(items_n == 0 or offset + items_n - 2 == json["rsp"]["total"])
-          end
-          if offset == 1 then
-            print("Found " .. string.format("%.0f", json["rsp"]["total"]) .. " " .. (method == "blog" and "articles" or "vlogs"))
-          end
-        elseif (method == "account" or method == "nickname") and not (type(json["rsp"]) == "boolean" and json["rsp"] == false) then
-          assert(json["rsp"]["count"] >= items_n - 1 and items_n >= 1)
-          if json["rsp"]["count"] == 30 and limit == 30 then
-            for _ = 1, 20 do
-              -- results vary with the limit
+        if type(json["rsp"]) == "table" then
+          local items_n = 0
+          for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
+          if method == "blog" or method == "vlog" then
+            if json["rsp"]["_ismore"] == true then
+              assert(limit == items_n - 1)
               check(
                 "https://m.xuite.net/rpc/search?method=" .. method
                 .. "&kw=" .. kw
-                .. "&offset=1"
-                .. "&limit=" .. string.format("%.0f", math.random(31, 2147483647)) -- math.random(31, 9223372036854775807) Lua 5.3
+                .. "&offset=" .. string.format("%.0f", offset + limit)
+                .. "&limit=" .. string.format("%.0f", limit)
               )
+            else
+              assert(items_n == 0 or offset + items_n - 2 == json["rsp"]["total"])
             end
+            if offset == 1 then
+              print("Found " .. string.format("%.0f", json["rsp"]["total"]) .. " " .. (method == "blog" and "articles" or "vlogs"))
+            end
+          elseif method == "account" or method == "nickname" then
+            assert(json["rsp"]["count"] >= items_n - 1 and items_n >= 1)
+            if json["rsp"]["count"] == 30 and limit == 30 then
+              for _ = 1, 20 do
+                -- results vary with the limit
+                check(
+                  "https://m.xuite.net/rpc/search?method=" .. method
+                  .. "&kw=" .. kw
+                  .. "&offset=1"
+                  .. "&limit=" .. string.format("%.0f", math.random(31, 2147483647)) -- math.random(31, 9223372036854775807) Lua 5.3
+                )
+              end
+            end
+          else
+            error("Unknown search method " .. method)
           end
-        else
-          error("Unknown search method " .. method)
-        end
-        if type(json["rsp"]) == "table" then
           assert(type(json["rsp"]["items"]) == "table")
           for _, item in pairs(json["rsp"]["items"]) do
             if item["type"] == nil then
