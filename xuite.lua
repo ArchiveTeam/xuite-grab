@@ -2111,7 +2111,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           if offset == 1 then
             print("Found " .. string.format("%.0f", json["rsp"]["total"]) .. " " .. (method == "blog" and "articles" or "vlogs"))
           end
-        elseif method == "account" or method == "nickname" then
+        elseif (method == "account" or method == "nickname") and not (type(json["rsp"]) == "boolean" and json["rsp"] == false) then
           assert(json["rsp"]["count"] >= items_n - 1 and items_n >= 1)
           if json["rsp"]["count"] == 30 and limit == 30 then
             for _ = 1, 20 do
@@ -2127,33 +2127,38 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         else
           error("Unknown search method " .. method)
         end
-        for _, item in pairs(json["rsp"]["items"]) do
-          if item["type"] == nil then
-            if method == "blog" then
-              assert(string.match(item["img"], "^//avatar%.xuite%.tw/[0-9]+/s$"))
-              assert(string.match(item["link"], "^/blog/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$"))
-              check("https:" .. item["img"])
-              check("https://m.xuite.net" .. item["link"])
-            elseif method == "vlog" then
-              assert(string.match(item["link"], "^/vlog/[0-9A-Za-z._]+/[0-9A-Za-z=]+$"))
-              assert(string.match(item["vlog_id"], "^[0-9A-Za-z=]+$"))
-              check("https://m.xuite.net" .. item["link"])
-              discover_vlog(item["vlog_id"])
-            elseif method == "account" or method == "nickname" then
-              assert(item["sn"] and item["uid"])
-              local sn = string.match(item["sn"], "^[0-9]+$")
-              local uid = string.match(item["uid"], "^[0-9A-Za-z._]+$")
-              if sn and uid then
-                discover_user(sn, uid)
-              else
-                local item_name = string.format("%.0f", item["sn"]) .. ":" .. urlcode.escape(item["uid"])
-                print("Ignore malformed user " .. item_name)
-                discover_item(discovered_data, "user-malformed:" .. item_name)
+        if type(json["rsp"]) == "table" then
+          assert(type(json["rsp"]["items"]) == "table")
+          for _, item in pairs(json["rsp"]["items"]) do
+            if item["type"] == nil then
+              if method == "blog" then
+                assert(string.match(item["img"], "^//avatar%.xuite%.tw/[0-9]+/s$"))
+                assert(string.match(item["link"], "^/blog/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$"))
+                check("https:" .. item["img"])
+                check("https://m.xuite.net" .. item["link"])
+              elseif method == "vlog" then
+                assert(string.match(item["link"], "^/vlog/[0-9A-Za-z._]+/[0-9A-Za-z=]+$"))
+                assert(string.match(item["vlog_id"], "^[0-9A-Za-z=]+$"))
+                check("https://m.xuite.net" .. item["link"])
+                discover_vlog(item["vlog_id"])
+              elseif method == "account" or method == "nickname" then
+                assert(item["sn"] and item["uid"])
+                local sn = string.match(item["sn"], "^[0-9]+$")
+                local uid = string.match(item["uid"], "^[0-9A-Za-z._]+$")
+                if sn and uid then
+                  discover_user(sn, uid)
+                else
+                  local item_name = string.format("%.0f", item["sn"]) .. ":" .. urlcode.escape(item["uid"])
+                  print("Ignore malformed user " .. item_name)
+                  discover_item(discovered_data, "user-malformed:" .. item_name)
+                end
               end
+            else
+              assert(item["type"] == "hot" and item["sn"] == nil and item["uid"] == nil)
             end
-          else
-            assert(item["type"] == "hot" and item["sn"] == nil and item["uid"] == nil)
           end
+        else
+          assert(type(json["rsp"]) == "boolean" and json["rsp"] == false)
         end
       end
     end
