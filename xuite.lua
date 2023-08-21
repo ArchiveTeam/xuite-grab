@@ -1902,25 +1902,43 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if not img_prefix or not img_suffix then
         img_prefix, img_suffix = string.match(html, "<img class=\"single%-show%-image fixed\" src=\"(https://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[xlmstqQ](%.[^.\"]+)\" alt=\"[^<>]*\"></div>")
       end
-      local picture_id = string.match(img_prefix, "https://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/([0-9]+)_")
-      assert(img_prefix and img_suffix and picture_id)
+      local picture_id = nil
+      if img_prefix then
+        picture_id = string.match(img_prefix, "https://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/([0-9]+)_")
+      end
+      -- string.match(html, "<div style=\"margin:10px 0;\">本相簿內容已受保護，請輸入密碼：</div>")
+      if not new_locations[url] then
+        assert(img_prefix and img_suffix and picture_id, url)
+      end
       -- first in first out
-      check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
+      if img_prefix and img_suffix then
+        check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
+      end
       check(url .. "/sizes/t/", url .. "/sizes/o/")
-      check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
+      if img_prefix and img_suffix then
+        check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
+      end
       check(url .. "/sizes/s/", url .. "/sizes/o/")
-      check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
+      if img_prefix and img_suffix then
+        check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
+      end
       check(url .. "/sizes/m/", url .. "/sizes/o/")
-      check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
+      if img_prefix and img_suffix then
+        check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
+      end
       check(url .. "/sizes/l/", url .. "/sizes/o/")
-      check(img_prefix .. "x" .. img_suffix, "https://photo.xuite.net/")
+      if img_prefix and img_suffix then
+        check(img_prefix .. "x" .. img_suffix, "https://photo.xuite.net/")
+      end
       check(url .. "/sizes/x/", url .. "/sizes/o/")
       check(url .. "/sizes/o/", url)
-      check(img_prefix .. "q" .. img_suffix, "https://photo.xuite.net/")
-      check(img_prefix .. "Q" .. img_suffix, "https://photo.xuite.net/")
+      if img_prefix and img_suffix then
+        check(img_prefix .. "q" .. img_suffix, "https://photo.xuite.net/")
+        check(img_prefix .. "Q" .. img_suffix, "https://photo.xuite.net/")
+      end
       -- https://photo.xuite.net/javascripts/picture_single.comb.js $("#single-more #single-more-title").click(); $.post()
       -- Although Cookie exif=1 is set to get the Exif included in the HTML, we also make this POST request
-      if string.match(html, "<div id=\"single%-more%-title\" ><a href=\"javascript:;\" >更多相片資訊</a></div>") and not string.match(html, "<div id=\"single%-more\"  style=\"display:none\">") then
+      if string.match(html, "<div id=\"single%-more%-title\" ><a href=\"javascript:;\" >更多相片資訊</a></div>") and not string.match(html, "<div id=\"single%-more\"  style=\"display:none\">") and picture_id then
         table.insert(urls, {
           url="https://photo.xuite.net/_picinfo/exif",
           headers={ ["Origin"] = "https://photo.xuite.net", ["Referer"] = url, ["X-Requested-With"] = "XMLHttpRequest" },
@@ -1930,10 +1948,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. serial)
     elseif string.match(url, "^https?://photo%.xuite%.net/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.jpg/sizes/o/$") then
       html = read_file(file)
-      local img_orig = string.match(html, "<a href=\"[^\"<>]+\"><img src=\"(//o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.[^.\"]+)\" alt=\"\" class=\"[^\"<>]*\"></a>")
-      assert(img_orig, "Could not find the original resolution of the photo. " .. url)
-      -- must be requested with a valid referrer header!
-      check("https:" .. img_orig, "https://photo.xuite.net/")
+      if not new_locations[url] then
+        local img_orig = string.match(html, "<a href=\"[^\"<>]+\"><img src=\"(//o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.[^.\"]+)\" alt=\"\" class=\"[^\"<>]*\"></a>")
+        assert(img_orig, "Could not find the original resolution of the photo. " .. url)
+        -- must be requested with a valid referrer header!
+        check("https:" .. img_orig, "https://photo.xuite.net/")
+      end
     end
   end
 
@@ -2271,6 +2291,16 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       or string.match(url, "^http://blog%.xuite%.net/_users/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/") then
       local sn_hash = string.match(url, "^http://[^/]*blog%.xuite%.net/([0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f])/") or string.match(url, "^http://blog%.xuite%.net/_users/([0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f])/")
       check(url:gsub(sn_hash, sn_hash:sub(1,1)..sn_hash:sub(3,3).."/"..sn_hash:sub(5,5)..sn_hash:sub(7,7), 1))
+    end
+    if string.match(url, "^https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_[xlmstqQ]%.[^.\"]+$") then
+      local img_prefix, img_suffix = string.match(html, "^(https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[xlmstqQ](%.[^.\"]+)$")
+      check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
+      check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
+      check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
+      check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
+      check(img_prefix .. "x" .. img_suffix, "https://photo.xuite.net/")
+      check(img_prefix .. "q" .. img_suffix, "https://photo.xuite.net/")
+      check(img_prefix .. "Q" .. img_suffix, "https://photo.xuite.net/")
     end
     if string.match(url, "%.xml$") and not new_locations[url] then
       html = read_file(file)
