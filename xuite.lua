@@ -848,7 +848,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         print("Found nothing from snapshot_avatar")
       end
       check("https://photo.xuite.net/_category?sn=" .. user_sn)
-    elseif string.match(url, "^https?://my%.xuite%.net/service/account/api/external/sn_name%.php") then
+    elseif string.match(url, "^https?://my%.xuite%.net/service/account/api/external/sn_name%.php%?") then
       html = read_file(file)
       local json = JSON:decode(string.match(html, "^jQuery[0-9]+_[0-9]+%((.+)%)\r\n$"))
       if json["nickname"] and string.len(json["nickname"]) >= 1 then
@@ -2481,6 +2481,8 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       and not string.match(html, "^<script>alert%(\"此篇文章只開放給作者好友閱讀\"%);") then
       retry_url = true
       return false
+    elseif status_code == 302 then
+      print("The blog/article URL " .. url["url"] .. " redirects to " .. newloc)
     end
   -- must be valid JSON
   elseif string.match(url["url"], "^https?://api%.xuite%.net/api%.php%?")
@@ -2523,6 +2525,17 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       return false
     elseif status_code == 403 then
       return true
+    end
+  -- must be valid callback
+  elseif string.match(url["url"], "^https?://my%.xuite%.net/service/account/api/external/sn_name%.php%?")
+    or string.match(url["url"], "^https?://blog%.xuite%.net/_theme/member_data%.php%?")
+    or string.match(url["url"], "^https?://my%.xuite%.net/api/visitor2xml%.php%?") then
+    if status_code == 302 then
+      print("The response should be JSON instead of " .. newloc)
+    end
+    if status_code ~= 200 then
+      retry_url = true
+      return false
     end
   elseif string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
     return false
