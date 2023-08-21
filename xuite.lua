@@ -2298,7 +2298,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check(url:gsub(sn_hash, sn_hash:sub(1,1)..sn_hash:sub(3,3).."/"..sn_hash:sub(5,5)..sn_hash:sub(7,7), 1))
     end
     if string.match(url, "^https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_[xlmstqQ]%.[^.\"]+$") then
-      local img_prefix, img_suffix = string.match(html, "^(https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[xlmstqQ](%.[^.\"]+)$")
+      local img_prefix, img_suffix = string.match(url, "^(https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[xlmstqQ](%.[^.\"]+)$")
       check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
