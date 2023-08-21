@@ -2048,6 +2048,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   if item_type == "pic-thumb" then
     if string.match(url, "^https?://pic%.xuite%.net/thumb/") then
       local orig_url = string.match(url, "^https?://pic%.xuite%.net/thumb/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]+/([0-9A-Za-z=]+)/[0-9A-Za-z]+%.jpg$")
+      if not orig_url then
+        orig_url = string.match(url, "^https?://pic%.xuite%.net/thumb/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]+/([0-9A-Za-z=]+)_[0-9A-Za-z=]+/[0-9A-Za-z]+%.jpg$")
+      end
       if orig_url then
         check(base64.decode(#orig_url % 4 == 2 and (orig_url .. '==') or #orig_url % 4 == 3 and (orig_url .. '=') or orig_url))
       else

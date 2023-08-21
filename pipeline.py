@@ -125,7 +125,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230821.01'
+VERSION = '20230821.02'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -422,7 +422,7 @@ class WgetArgs(object):
                 wget_args.append('https://vlog.xuite.net/play/'+item_value)
             # thumb
             elif item_type == 'pic-thumb':
-                assert re.search(r'^(?:[0-9a-f]/){4}[0-9a-f]{28}/[0-9A-Za-z=]+/[1-9][0-9]*[A-Z]\.jpg$', item_value), item_value
+                assert re.search(r'^(?:[0-9a-f]/){4}[0-9a-f]{28}/[0-9A-Za-z=]+(?:_[0-9A-Za-z=]+)?/[1-9][0-9]*[A-Z]\.jpg$', item_value), item_value
                 wget_args.extend(['--warc-header', 'xuite-pic-thumb: '+item_value])
                 wget_args.append('https://pic.xuite.net/thumb/'+item_value)
             # keyword
