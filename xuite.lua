@@ -155,9 +155,13 @@ discover_vlog = function(vlogid)
   assert(string.match(vlogid, "^[0-9A-Za-z=]+$"))
   -- generate correctly padded canonical vlogid
 	vlogid = #vlogid % 4 == 2 and (vlogid .. '==') or #vlogid % 4 == 3 and (vlogid .. '=') or vlogid
-  local mediaid = string.match(base64.decode(vlogid), "%-([0-9]+)%.[0-9a-z]+$")
+  local mediaid = string.match(base64.decode(vlogid), "%-([0-9]+)%.+[0-9a-z]+$")
   discover_item(discovered_items, "vlog:" .. vlogid)
-  discover_item(discovered_data, "vlog," .. mediaid .. "," .. vlogid)
+  if mediaid then
+    discover_item(discovered_data, "vlog," .. mediaid .. "," .. vlogid)
+  else
+    discover_item(discovered_data, "vlog-malformed:" .. vlogid)
+  end
   return vlogid
 end
 
@@ -1186,7 +1190,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       -- $(document).on('click','.vloglist-more',function(e){...});
       -- if string.match(html, "<a class=\"vloglist%-more\" href=\"javascript:void%(0%);\">more</a>") then
       if string.match(html, "class=\"vloglist%-more\"") then
-        error("TODO: More playlist button looks like " .. url .. " . Please post this message on the IRC channel #sweet@irc.hackint.org .")
+        print("TODO: More playlist button looks like " .. url .. " . Please post this message on the IRC channel #sweet@irc.hackint.org .")
+        abort_item()
+        if false then
         local val_offset = string.match(html, "<input type=\"hidden\" class=\"loaded\" value=\"([0-9]*)\">")
         local val_user = string.match(html, "<input type=\"hidden\" class=\"loadeduser\" value=\"([0-9A-Za-z._]+)\">")
         local val_vt = string.match(html, "<input type=\"hidden\" class=\"loadedvt\" value=\"([01])\">")
@@ -1197,11 +1203,15 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         assert(val_vt == "1", val_vt)
         assert(val_t == "list", val_t)
         assert(val_p == "", val_p)
+        end
         check("https://m.xuite.net/vlog/ajax?apiType=more&offset=12&user=" .. user_id .. "&vt=1&t=list&p=", url)
       elseif not new_locations[url] then
         local count = string.match(html, "<div class=\"vloglist%-Subdirectory\"> <span>.*的播放清單%(共 ([0-9]+) 則%)</span> </div>")
         -- TODO: what is the playlist offset?
-        assert(tonumber(count) <= 10, "TODO: playlists less than " .. count .. " have no more button. Please post this message on the IRC channel #sweet@irc.hackint.org .")
+        if tonumber(count) > 10 then
+          print("TODO: playlists less than " .. count .. " have no more button. Please post this message on the IRC channel #sweet@irc.hackint.org .")
+          abort_item()
+        end
       end
       for thumb in string.gmatch(html, "<img src=\"(//vlog%.xuite%.net/media/home[^\"<>]+)\">") do
         check("https:" .. thumb, url)
@@ -1624,60 +1634,67 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         -- if (index == "" && location.hash != '#message_header') { mid = location.hash.replace("#",""); }
         local Mmid = ""
         if string.match(html, "<html itemscope=\"itemscope\" itemtype=\"http://schema%.org/Blog\">") then
-          assert(Maid and Mbid and Muid and Ma_author_id, "Cannot find Message() arguments from " .. url)
-          assert(Taid and Tb_login and Tb_url and Tmid and Tbid and Ta_author_id and Ttrack_flag, "Cannot find TrackBack() arguments from " .. url)
-          assert(Maid == Taid)
-          assert(Maid == article_id and Taid == article_id)
-          assert(Mbid == Tbid)
-          assert(Muid == Tmid)
-          -- Muid and Ma_author_id may be different, because the blog owner can grant permission to other users to publish articles
-          assert(Ma_author_id == Ta_author_id)
-          assert(Tb_login == user_id)
-          assert(Tb_url == blog_url)
-          user_id_tbl[Muid] = user_id
-          blog_url_tbl[Mbid] = blog_url
-          -- function getArticleDetailCounter(json){}
-          check(
-            "https://blog.xuite.net/_theme/ArticleDetailCounterExp.php"
-            .. "?aid=" .. article_id
-            .. "&ga=" .. TSTAMP
-          , url)
-          check(
-            "https://blog.xuite.net/_theme/TrackBackShowExp.php"
-            .. "?aid=" .. Taid
-            .. "&b_login=" .. Tb_login
-            .. "&b_url=" .. Tb_url
-            .. "&mid=" .. Tmid
-            .. "&bid=" .. Tbid
-            .. "&a_author_id=" .. Ta_author_id
-            .. "&track_flag=" .. Ttrack_flag
-            .. "&index="
-            .. "&ga=" .. TSTAMP
-          , url)
-          check(
-            "https://blog.xuite.net/_theme/MessageShowExp.php"
-            .. "?ver=new"
-            .. "&aid=" .. Maid
-            .. "&uid=" .. Muid
-            .. "&bid=" .. Mbid
-            .. "&a_author_id=" .. Ma_author_id
-            .. "&index=" .. "1"
-            .. "&mid=" .. Mmid
-            .. "&ga=" .. TSTAMP
-          , url)
-          check(
-            "https://blog.xuite.net/_theme/MessageShowExp.php"
-            .. "?ver=new"
-            .. "&aid=" .. Maid
-            .. "&uid=" .. Muid
-            .. "&bid=" .. Mbid
-            .. "&a_author_id=" .. Ma_author_id
-            .. "&index="
-            .. "&mid=" .. Mmid
-            .. "&ga=" .. TSTAMP
-          , url)
-        else
-          assert(new_locations[url], url)
+          if not (Maid and Mbid and Muid and Ma_author_id) then
+            print("Cannot find Message() arguments from " .. url)
+            abort_item()
+          elseif not (Taid and Tb_login and Tb_url and Tmid and Tbid and Ta_author_id and Ttrack_flag) then
+            print("Cannot find TrackBack() arguments from " .. url)
+            abort_item()
+          else
+            assert(Maid == Taid)
+            assert(Maid == article_id and Taid == article_id)
+            assert(Mbid == Tbid)
+            assert(Muid == Tmid)
+            -- Muid and Ma_author_id may be different, because the blog owner can grant permission to other users to publish articles
+            assert(Ma_author_id == Ta_author_id)
+            assert(Tb_login == user_id)
+            assert(Tb_url == blog_url)
+            user_id_tbl[Muid] = user_id
+            blog_url_tbl[Mbid] = blog_url
+            -- function getArticleDetailCounter(json){}
+            check(
+              "https://blog.xuite.net/_theme/ArticleDetailCounterExp.php"
+              .. "?aid=" .. article_id
+              .. "&ga=" .. TSTAMP
+            , url)
+            check(
+              "https://blog.xuite.net/_theme/TrackBackShowExp.php"
+              .. "?aid=" .. Taid
+              .. "&b_login=" .. Tb_login
+              .. "&b_url=" .. Tb_url
+              .. "&mid=" .. Tmid
+              .. "&bid=" .. Tbid
+              .. "&a_author_id=" .. Ta_author_id
+              .. "&track_flag=" .. Ttrack_flag
+              .. "&index="
+              .. "&ga=" .. TSTAMP
+            , url)
+            check(
+              "https://blog.xuite.net/_theme/MessageShowExp.php"
+              .. "?ver=new"
+              .. "&aid=" .. Maid
+              .. "&uid=" .. Muid
+              .. "&bid=" .. Mbid
+              .. "&a_author_id=" .. Ma_author_id
+              .. "&index=" .. "1"
+              .. "&mid=" .. Mmid
+              .. "&ga=" .. TSTAMP
+            , url)
+            check(
+              "https://blog.xuite.net/_theme/MessageShowExp.php"
+              .. "?ver=new"
+              .. "&aid=" .. Maid
+              .. "&uid=" .. Muid
+              .. "&bid=" .. Mbid
+              .. "&a_author_id=" .. Ma_author_id
+              .. "&index="
+              .. "&mid=" .. Mmid
+              .. "&ga=" .. TSTAMP
+            , url)
+          end
+        elseif not new_locations[url] then
+          print("Unrecognized article response " .. url)
+          abort_item()
         end
       end
       if string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+$") then
@@ -1741,17 +1758,21 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if string.match(html, "<link rel=\"canonical\" href=\"//blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+\" />") then
         if not string.match(html, "<form class=\"secret%-form\" data%-ajax=\"false\" method=\"POST\" > <section id=\"secret%-form%-container\"> <input id=\"secret%-password\" type=\"password\" name=\"pwInput\" placeholder=\"請輸入密碼\" value=\"\" data%-role=\"none\" autocomplete=\"off\"/>")
           and not string.match(html, "<h1 id=\"noauth%-h1\">你沒有瀏覽權限</h1>") then
-          assert(string.match(html, "<div class=\"xmui%-page%-more\" style=\"display:none\">"))
-          -- https://m.xuite.net/js/channel1705081030.js if(g.target.id==="blog-show")a("#blog-show-load-comments",d).on("click",function(){a.xuite.ajaxLoadComment(...)}).click();
-          local val_cmmtArg = string.match(html, "<input type=\"hidden\" class=\"cmmtArg\" value=\"([^\"<>]*)\"/>")
-          if string.len(val_cmmtArg) >= 1 then
-            local userAccount, blogid, articleid = string.match(val_cmmtArg, "^blog,([^\"<>]+),([^\"<>]+),([^\"<>]+)$")
-            local data_comment_page = string.match(html, "<div id=\"blog%-show%-load%-comments\" class=\"xmui%-page%-more%-button\" data%-comment%-page=([0-9]+) data%-loaded=0>")
-            -- local data_commenttotal = tonumber(string.match(html, "<span id=\"commentNum\" data%-commenttotal=\"([0-9]+)\">[0-9%+]+</span>"))
-            assert(userAccount == user_id)
-            assert(articleid == article_id)
-            assert(data_comment_page == "1")
-            check("https://m.xuite.net/rpc/blog?method=loadComment&userAccount=" .. userAccount .. "&blogid=" .. blogid .. "&articleid=" .. articleid .. "&p=1", url)
+          if string.match(html, "<div class=\"xmui%-page%-more\" style=\"display:none\">") then
+            -- https://m.xuite.net/js/channel1705081030.js if(g.target.id==="blog-show")a("#blog-show-load-comments",d).on("click",function(){a.xuite.ajaxLoadComment(...)}).click();
+            local val_cmmtArg = string.match(html, "<input type=\"hidden\" class=\"cmmtArg\" value=\"([^\"<>]*)\"/>")
+            if string.len(val_cmmtArg) >= 1 then
+              local userAccount, blogid, articleid = string.match(val_cmmtArg, "^blog,([^\"<>]+),([^\"<>]+),([^\"<>]+)$")
+              local data_comment_page = string.match(html, "<div id=\"blog%-show%-load%-comments\" class=\"xmui%-page%-more%-button\" data%-comment%-page=([0-9]+) data%-loaded=0>")
+              -- local data_commenttotal = tonumber(string.match(html, "<span id=\"commentNum\" data%-commenttotal=\"([0-9]+)\">[0-9%+]+</span>"))
+              assert(userAccount == user_id)
+              assert(articleid == article_id)
+              assert(data_comment_page == "1")
+              check("https://m.xuite.net/rpc/blog?method=loadComment&userAccount=" .. userAccount .. "&blogid=" .. blogid .. "&articleid=" .. articleid .. "&p=1", url)
+            end
+          elseif not new_locations[url] then
+            print("Unrecognized article response " .. url)
+            abort_item()
           end
         end
       end
@@ -2078,7 +2099,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if orig_url then
         check(base64.decode(#orig_url % 4 == 2 and (orig_url .. '==') or #orig_url % 4 == 3 and (orig_url .. '=') or orig_url))
       else
-        error("Unknown thumb URL " .. url)
+        print("Unknown thumb URL " .. url)
+        abort_item()
       end
     end
   end
@@ -2161,8 +2183,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
               assert(item["type"] == "hot" and item["sn"] == nil and item["uid"] == nil)
             end
           end
-        else
-          assert(type(json["rsp"]) == "boolean" and json["rsp"] == false)
+        elseif not (type(json["rsp"]) == "boolean" and json["rsp"] == false) then
+          abort_item()
         end
       end
     end
@@ -2516,9 +2538,13 @@ wget.callbacks.write_to_warc = function(url, http_stat)
           return false
         end
         if string.match(url["url"], "%?method=account") and json and json["ok"] == true then
-          local items_n = 0
-          for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
-          return items_n >= 2
+          if type(json["rsp"]) == "table" then
+            local items_n = 0
+            for _, _ in pairs(json["rsp"]["items"]) do items_n = items_n + 1 end
+            return items_n >= 2
+          elseif not (type(json["rsp"]) == "boolean" and json["rsp"] == false) then
+            return false
+          end
         else
           return false
         end
