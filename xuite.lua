@@ -2279,8 +2279,15 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       assert(args["service_url"] == "/_service/wall/", args["service_url"])
       assert(args["act"] == "show", args["act"])
       assert((type(args["nocache"]) == "string" and argc == 5) or (type(args["nocache"]) == "nil" and argc == 4))
+    elseif string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/audio_player%.swf%??[^?]*$")
+      or string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/index_player%.swf%??[^?]*$")
+      or string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/lite%.swf%??[^?]*$")
+      or string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/mPlayer%.swf%??[^?]*$")
+      or string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/mPlayer2%.swf%??[^?]*$") then
+      -- do nothing
     else
-      error("TODO: unknown embedded SWF file: " .. url)
+      print("TODO: unknown embedded SWF file: " .. url)
+      abort_item()
     end
     local check_assetUrl = function(url)
       assert(string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
