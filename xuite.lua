@@ -1618,6 +1618,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       or string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+/[0-9]+%-[^/?]*$") then
       html = read_file(file)
       if not string.match(html, "^<script>alert%(\"此文章不存在喔!!\"%);")
+        and not string.match(html, "^<script language=\"javascript\">\nalert%(\"此文章不存在喔!!\"%);")
         and not string.match(html, "<form name='main' method='post' action='/_theme/item/article_lock%.php'>本文章已受保護, 請輸入密碼才能閱讀本文章: <br/><br/>")
         and not string.match(html, "^<script>alert%(\"此篇文章只開放給作者好友閱讀\"%);") then
         local user_id, blog_url, article_id = string.match(url, "^https?://blog%.xuite%.net/([0-9A-Za-z._]+)/([0-9A-Za-z]+)/([0-9]+)")
@@ -2510,6 +2511,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     if status_code == 200
       and not string.match(html, "<html itemscope=\"itemscope\" itemtype=\"http://schema%.org/Blog\">")
       and not string.match(html, "^<script>alert%(\"此文章不存在喔!!\"%);")
+      and not string.match(html, "^<script language=\"javascript\">\nalert%(\"此文章不存在喔!!\"%);")
       and not string.match(html, "<form name='main' method='post' action='/_theme/item/article_lock%.php'>本文章已受保護, 請輸入密碼才能閱讀本文章: <br/><br/>")
       and not string.match(html, "^<script>alert%(\"此篇文章只開放給作者好友閱讀\"%);") then
       retry_url = true

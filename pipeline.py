@@ -125,7 +125,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230822.02'
+VERSION = '20230822.03'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 TRACKER_ID = 'xuite'
 TRACKER_HOST = 'legacy-api.arpa.li'
