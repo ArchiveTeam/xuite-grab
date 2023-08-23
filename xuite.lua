@@ -242,16 +242,6 @@ find_item = function(url)
     type_ = "keyword"
   end
   if not value then
-    value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]$")
-    if not value then
-      value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]%?[^?]+$")
-    end
-    if value then
-      value = urlcode.escape(value)
-    end
-    type_ = "embed"
-  end
-  if not value then
     for _, pattern in pairs({
       "^https?://pic%.xuite%.net/[0-9a-f]/?[0-9a-f]/.+$",
       "^https?://img%.xuite%.net/.+$",
@@ -285,6 +275,16 @@ find_item = function(url)
       end
     end
     type_ = "asset"
+  end
+  if not value then
+    value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]$")
+    if not value then
+      value = string.match(url, "^https?://.+%.[Ss][Ww][Ff]%?[^?]+$")
+    end
+    if value then
+      value = urlcode.escape(value)
+    end
+    type_ = "embed"
   end
   if value then
     return {
