@@ -1368,11 +1368,26 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       -- https://blog.xuite.net/_public/js/blog_01.js TemplateJS.item_main.main()
       local _config = string.match(html, "<script>[^T<>]*TemplateJS%.item_main%.main%(({[^%(%)]+})%)")
-      assert(_config, "Cannot find TemplateJS.item_main._config from " .. url)
-      -- TODO: the modified JavaScript object parser (JSObj.lua) may be unstable
-      _config = JSObj:decode(_config)
-      -- tprint(_config)
-      assert(_config["burl"] == blog_url)
+      local _config_theme_navigationbar = string.match(html, "<script>[^T<>]*TemplateJS%.theme_navigationbar%.main%(({[^%(%)]+})%)")
+      if string.match(html, "<div class=\"blogbody\" style=\"padding%-bottom:15px;\"><img src=\"//blog%.xuite%.net/_image/blog040105%.gif\" width=\"67\" height=\"47\">本日誌尚未新增文章喔！</div>") then
+        if _config then
+          print("TemplateJS.item_main._config should not appear in empty blog " .. url)
+          abort_item()
+        elseif not _config_theme_navigationbar then
+          print("Cannot find TemplateJS.theme_navigationbar._config from " .. url)
+          abort_item()
+        else
+          _config_theme_navigationbar = JSObj:decode(_config_theme_navigationbar)
+          assert(string.match(_config_theme_navigationbar["bid"], "^[0-9]+$"))
+        end
+      elseif not _config then
+        print("Cannot find TemplateJS.item_main._config from " .. url)
+        abort_item()
+      else
+        -- TODO: the modified JavaScript object parser (JSObj.lua) may be unstable
+        _config = JSObj:decode(_config)
+        assert(_config["burl"] == blog_url)
+      end
       local at_root = string.match(url, "^https?://blog%.xuite%.net/[0-9A-Za-z._]+/[0-9A-Za-z]+$")
       if at_root then
         check(url .. "/mosaic-view")
@@ -1383,31 +1398,41 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check(url .. "/atom.xml")
         check(url .. "/rss.xml")
         -- blog:pc:count 參觀人次統計 function getCountSide(json){}
+        if _config then
+          check(
+            "https://blog.xuite.net/_theme/CountSideExp.php"
+            .. "?bid=" .. _config["bid"]
+            .. "&ga=" .. TSTAMP
+          , url)
+        elseif _config_theme_navigationbar then
+          check(
+            "https://blog.xuite.net/_theme/CountSideExp.php"
+            .. "?bid=" .. _config_theme_navigationbar["bid"]
+            .. "&ga=" .. TSTAMP
+          , url)
+        end
+      end
+      if _config then
+        if tonumber(_config["locked_num"]) ~= 0 then
+          check(
+            "https://blog.xuite.net/_theme/ArticlePasswdExp.php"
+            .. "?burl=" .. _config["burl"]
+            .. "&list=" .. _config["list_article"]
+            .. "&ga=" .. TSTAMP
+          , url)
+        end
         check(
-          "https://blog.xuite.net/_theme/CountSideExp.php"
+          "https://blog.xuite.net/_theme/ArticleCounterExp.php"
           .. "?bid=" .. _config["bid"]
+          .. "&start=" .. _config["start"]
+          .. "&offset=" .. _config["offset"]
+          .. "&st=" .. _config["st"]
+          .. "&where=" .. _config["where"]
+          .. "&mid=" .. _config["mid"]
+          .. "&set=" .. _config["set"]
           .. "&ga=" .. TSTAMP
         , url)
       end
-      if tonumber(_config["locked_num"]) ~= 0 then
-        check(
-          "https://blog.xuite.net/_theme/ArticlePasswdExp.php"
-          .. "?burl=" .. _config["burl"]
-          .. "&list=" .. _config["list_article"]
-          .. "&ga=" .. TSTAMP
-        , url)
-      end
-      check(
-        "https://blog.xuite.net/_theme/ArticleCounterExp.php"
-        .. "?bid=" .. _config["bid"]
-        .. "&start=" .. _config["start"]
-        .. "&offset=" .. _config["offset"]
-        .. "&st=" .. _config["st"]
-        .. "&where=" .. _config["where"]
-        .. "&mid=" .. _config["mid"]
-        .. "&set=" .. _config["set"]
-        .. "&ga=" .. TSTAMP
-      , url)
       if at_root then
         -- blog:pc:visitor 誰拜訪過我 https://img.xuite.net/xui/combo/w/visitor
         -- this widget can be turned off by the user, causing the visitor_key not to be displayed
