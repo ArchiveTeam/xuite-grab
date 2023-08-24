@@ -846,8 +846,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local sn = string.match(html, "<div class=\"avatarPhoto\"><img src=\"//avatar%.xuite%.net/([0-9]+)\"></div>")
       local uid = string.match(html, "<br><br><a href=\"//photo%.xuite%.net/([0-9A-Za-z._]+)\" alt=")
       if sn and uid then
-        assert(user_sn == sn)
-        discover_user(sn, uid)
+        if user_sn == sn then
+          discover_user(sn, uid)
+        else
+          abort_item()
+        end
       else
         print("Found nothing from snapshot_avatar")
       end
@@ -867,8 +870,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           if friendship["sn"] and friendship["uid"] then
             local sn = string.match(friendship["sn"], "^[0-9]+$")
             local uid = string.match(friendship["uid"], "^[0-9A-Za-z._]+$")
-            assert(sn and uid)
-            discover_user(sn, uid)
+            if sn and uid then
+              discover_user(sn, uid)
+            else
+              abort_item()
+            end
           end
         end
       else
@@ -879,15 +885,19 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local user_sn = string.match(url, "^https?://photo%.xuite%.net/_category%?sn=([0-9]+)$")
       html = read_file(file)
       local sn = string.match(html, "<p>檢舉需要<a href=\"/@login%?furl=%%2F_category%%3Fsn%%3D([0-9]+)\">登入會員 &raquo;</a>。</p>")
+      if not (user_sn == sn) then
+        abort_item()
+      end
       -- user:album:search 搜尋相簿
       local uid = string.match(html, "<input id=\"searchUid\" type=\"hidden\" value=\"([0-9A-Za-z._]*)\">")
       -- this widget can be turned off by the user. so if searchUid does not appear, the user must exist
       if not uid then
         local uid = string.match(html, "<div class=\"avatar side\">[^<>]*<div class=\"avatarPhoto\">[^<>]*<a href=\"//xuite%.net/([0-9A-Za-z._]*)\"[^t<>]*title=\"[^\"]*\">[^<>]*<img[^<>]*></a>[^<>]*</div>")
-        assert(uid)
       end
-      assert(user_sn == sn)
-      if uid and string.len(uid) >= 1 then
+      if not uid then
+        abort_item()
+      end
+      if string.len(uid) >= 1 then
         discover_user(sn, uid)
       else
         print("Found nothing from photo_category")
@@ -903,9 +913,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local sn = string.match(html, "<img class=\"mywall%-thumb%-img\" onclick='%$%(\"#nft%-info%-modal\"%)%.modal%(\"show\"%);' src=\"//avatar%.xuite%.net/([0-9]+)/s%?t=[0-9]+\">")
       local uid = string.match(html, "<link rel=\"canonical\" href=\"//mywall%.xuite%.net/([0-9A-Za-z._]+)\" />")
       if sn and uid then
-        assert(uid == item_value)
-        discover_user(sn, uid)
-        user_sn_tbl[uid] = sn
+        if uid == item_value then
+          discover_user(sn, uid)
+          user_sn_tbl[uid] = sn
+        else
+          abort_item()
+        end
       end
       check("https://photo.xuite.net/_feed/album?user_id=" .. item_value)
       check(
@@ -962,8 +975,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local sn = string.match(json, "    <pic>//avatar%.xuite%.net/([0-9]+)/s</pic>")
       local uid = string.match(json, "  <blog>//blog%.xuite%.net/([0-9A-Za-z._]+)</blog>")
       if sn and uid then
-        assert(uid == user_id)
-        discover_user(sn, uid)
+        if uid == user_id then
+          discover_user(sn, uid)
+        else
+          abort_item()
+        end
       else
         print("Found nothing from member_data")
       end
@@ -976,8 +992,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           for _, friend in pairs(group["grouplist"]) do
             local sn = string.match(friend["sn"], "^[0-9]+$")
             local uid = string.match(friend["uid"], "^[0-9A-Za-z._]+$")
-            assert(sn and uid)
-            discover_user(sn, uid)
+            if sn and uid then
+              discover_user(sn, uid)
+            else
+              abort_item()
+            end
           end
         end
       end
@@ -1042,7 +1061,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. val_uid .. "&limit=12&offset=12&sk=&p=", url)
       elseif not new_locations[url] then
         local count = string.match(html, "<p class=\"albumlist%-info%-count\"><span>粉絲 [0-9]+</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span>相簿 ([0-9]+)</span></p>")
-        assert(tonumber(count) <= 12, url)
+        if not count or not (tonumber(count) <= 12) then
+          print(url)
+          abort_item()
+        end
       end
     elseif string.match(url, "^https?://photo%.xuite%.net/_feed/album%?") then
       html = read_file(file)
@@ -1100,7 +1122,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://m.xuite.net/rpc/photo?method=loadAlbums&userId=" .. val_uid .. "&limit=12&offset=12&sk=&p=" .. val_tag_id, url)
       elseif not new_locations[url] then
         local count = string.match(html, "<div class=\"albumlist%-Subdirectory\" > <span>個人相簿＞標籤為 .*的相簿%(共([0-9]+)本%)</span><a href=\"/photo/[0-9A-Za-z._]+\">回相簿列表</a> </div>")
-        assert(tonumber(count) <= 12, url)
+        if not count or not (tonumber(count) <= 12) then
+          print(url)
+          abort_item()
+        end
       end
     elseif string.match(url, "^https?://photo%.xuite%.net/_category%?sn=[0-9]+&tagid=[0-9a-f]+$") then
       -- do nothing
@@ -1165,7 +1190,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://m.xuite.net/vlog/ajax?apiType=more&offset=12&user=" .. val_user .. "&vt=0&t=list&p=", url)
       elseif not new_locations[url] then
         local count = string.match(html, "<div class=\"vloglist%-Subdirectory\"> <span>.*的影音%(共 ([0-9]+) 則%)</span> </div>")
-        assert(tonumber(count) <= 12, url)
+        if not count or not (tonumber(count) <= 12) then
+          print(url)
+          abort_item()
+        end
       end
       check("https://vlog.xuite.net/" .. user_id .. "/rss.xml")
       check(url .. "?vt=0")
@@ -1223,7 +1251,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://vlog.xuite.net/_playlist/play?plid=" .. plid)
       end
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&offset=[0-9]+&user=[0-9A-Za-z._]+&vt=1&t=list&p=$") then
-      error("TODO: More playlist AJAX looks like " .. url .. " . Please post this message on the IRC channel #sweet@irc.hackint.org .")
+      print("TODO: More playlist AJAX looks like " .. url .. " . Please post this message on the IRC channel #sweet@irc.hackint.org .")
+      abort_item()
       local user_id = string.match(url, "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&offset=[0-9]+&user=([0-9A-Za-z._]+)&vt=1&t=list&p=$")
       html = read_file(file)
       local json = JSON:decode(html)
@@ -1277,7 +1306,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://m.xuite.net/vlog/ajax?apiType=more&offset=12&user=" .. val_user .. "&vt=0&t=cat&p=" .. p, url)
       elseif not new_locations[url] then
         local count = string.match(html, "<div class=\"vloglist%-Subdirectory\"> <span><a href=\"%?vt=0\">.*的影音</a></span><span> %- 資料夾 %[ .* %]%(共 ([0-9]+) 則%)</span> </div>")
-        assert(tonumber(count) <= 12, url)
+        if not count or not (tonumber(count) <= 12) then
+          print(url)
+          abort_item()
+        end
       end
     elseif string.match(url, "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&offset=[0-9]+&user=[0-9A-Za-z._]+&vt=0&t=cat&p=/[0-9]+") then
       local user_id, p = string.match(url, "^https?://m%.xuite%.net/vlog/ajax%?apiType=more&offset=[0-9]+&user=([0-9A-Za-z._]+)&vt=0&t=cat&p=/([0-9]+)")
@@ -1300,12 +1332,16 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           assert(string.match(blog["blog_id"], "^[0-9]+$"))
           -- assert(string.match(blog["blog_name"], "^[0-9A-Za-z]+$")) -- accept malformed blog URLs
           discover_blog(user_id, blog["blog_name"], blog["blog_id"])
-          local sn_hash = md5.sumhexa(user_sn_tbl[user_id])
-          for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
-            local sn_prefix = sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/"
-            check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. user_sn_tbl[user_id] .. "/" .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
+          if user_sn_tbl[user_id] then
+            local sn_hash = md5.sumhexa(user_sn_tbl[user_id])
+            for _, asset_name in pairs({ "photo.jpg", "blog.css" }) do
+              local sn_prefix = sn_hash:sub(1,1).."/"..sn_hash:sub(2,2).."/"..sn_hash:sub(3,3).."/"..sn_hash:sub(4,4).."/"
+              check("https://" .. sn_hash:sub(1,1) .. ".blog.xuite.net/" .. sn_prefix .. user_sn_tbl[user_id] .. "/" .. "blog_" .. blog["blog_id"] .. "/" .. asset_name)
+            end
+            check("http://blog.xuite.net/_theme/SmallPaintExp.php?mid=" .. user_sn_tbl[user_id] .. "&bid=" .. blog["blog_id"], "https://blog.xuite.net/" .. user_id .. "/" .. blog["blog_name"])
+          else
+            abort_item()
           end
-          check("http://blog.xuite.net/_theme/SmallPaintExp.php?mid=" .. user_sn_tbl[user_id] .. "&bid=" .. blog["blog_id"], "https://blog.xuite.net/" .. user_id .. "/" .. blog["blog_name"])
           check("http://blog.xuite.net/_service/smallpaint/swf/main.swf?server_url=/_users&service_url=/_service/smallpaint/&save_url=/_service/smallpaint/save.php&list_url=/_service/smallpaint/list.php&bid=" .. blog["blog_id"] .. "&author=N")
           check("http://blog.xuite.net/_service/smallpaint/list.php?bid=" .. blog["blog_id"] .. "&ran=0")
           if string.len(blog["thumb"]) >= 1 then
@@ -1314,25 +1350,33 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
       elseif string.match(url, "method=xuite%.photo%.public%.getAlbums&") and json["ok"] then
         for _, album in pairs(json["rsp"]) do
-          assert(string.match(album["album_id"], "^[0-9]+$"))
-          assert(string.match(album["category_id"], "^[0-9]+$"))
-          discover_album(user_id, album["album_id"])
-          check("https://photo.xuite.net/_category?st=cat&uid=" .. user_id .. "&sk=" .. album["category_id"])
+          if string.match(album["album_id"], "^[0-9]+$") and string.match(album["category_id"], "^[0-9]+$") then
+            discover_album(user_id, album["album_id"])
+            check("https://photo.xuite.net/_category?st=cat&uid=" .. user_id .. "&sk=" .. album["category_id"])
+          else
+            abort_item()
+          end
         end
       elseif (string.match(url, "method=xuite%.vlog%.public%.getVlogs&") or string.match(url, "method=xuite%.vlog%.public%.getVlogsByDir&")) and json["ok"] then
         local vlogs_n = 0
         for _, _ in pairs(json["rsp"]["vlogs"]) do vlogs_n = vlogs_n + 1 end
-        assert(json["rsp"]["total"] == vlogs_n)
+        if not (json["rsp"]["total"] == vlogs_n) then
+          abort_item()
+        end
         for _, vlog in pairs(json["rsp"]["vlogs"]) do
           discover_vlog(vlog["vlog_id"])
         end
       elseif string.match(url, "method=xuite%.vlog%.public%.getDirs&") and json["ok"] then
         if json["rsp"]["total"] == 0 then
-          assert(json["rsp"]["dirs"] == nil)
+          if json["rsp"]["dirs"] then
+            abort_item()
+          end
         else
           local dirs_n = 0
           for _, _ in pairs(json["rsp"]["dirs"]) do dirs_n = dirs_n + 1 end
-          assert(json["rsp"]["total"] == dirs_n)
+          if not (json["rsp"]["total"] == dirs_n) then
+            abort_item()
+          end
           for _, dir in pairs(json["rsp"]["dirs"]) do
             assert(string.match(dir["dir_id"], "^[0-9]+$"))
             discover_item(discovered_data, "directory," .. dir["dir_id"] .. "," .. user_id)
@@ -1438,7 +1482,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         -- this widget can be turned off by the user, causing the visitor_key not to be displayed
         local visitor_key = string.match(html, "\r\n<script>\r\n	var visitor = %$%(\"div%.visitorSide\"%)%.get%(0%);\r\n	new XUI%.Widgets%.Visitor%(visitor, {\r\n        key : '([0-9A-Za-z=]+)'\r\n    }%)%.render%(%);\r\n</script>")
         if visitor_key ~= nil then
-          assert(base64.decode(visitor_key) == url:gsub("^https://", "http://"))
+          if base64.decode(visitor_key) ~= url:gsub("^https://", "http://") then
+            abort_item()
+          end
         -- but we can derive the visitor_key ...
         else
           -- remove the second result returned by string.gsub
@@ -1808,20 +1854,28 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local json = JSON:decode(html)
       if json["ok"] then
         if json["rsp"]["total"] == 0 then
-          assert(json["rsp"]["comment"] == nil)
+          if json["rsp"]["comment"] then
+            abort_item()
+          end
         else
           for _, comment in pairs(json["rsp"]["comment"]) do
             if comment["login_type"] == "cht" then
               local sn = string.match(comment["sn"], "^[0-9]+$")
               local uid = string.match(comment["user_id"], "^[0-9A-Za-z._]+$")
-              assert(sn and uid)
-              discover_user(sn, uid)
+              if sn and uid then
+                discover_user(sn, uid)
+              else
+                abort_item()
+              end
             end
             if comment["reply"] then
               local sn = string.match(comment["reply"]["sn"], "^[0-9]+$")
               local uid = string.match(comment["reply"]["user_id"], "^[0-9A-Za-z._]+$")
-              assert(sn and uid)
-              discover_user(sn, uid)
+              if sn and uid then
+                discover_user(sn, uid)
+              else
+                abort_item()
+              end
             end
           end
         end
@@ -1867,7 +1921,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         check("https://m.xuite.net/rpc/photo?method=loadPhotos&userId=" .. val_userId .. "&albumId=" .. val_albumId .. "&limit=24&offset=24", url)
       elseif not new_locations[url] then
         local count = string.match(html, "<div class=\"photolist%-Subdirectory\"> <span>個人相簿＞.*%(共([0-9]+)張%)</span><a href=\"/photo/[0-9A-Za-z._]+\">回相簿列表</a> </div>")
-        assert(tonumber(count) <= 24, url)
+        if not count or not (tonumber(count) <= 24) then
+          print(url)
+          abort_item()
+        end
       end
       -- before wget discovers the first 24 photos, we must explicitly pass them to check()
       -- otherwise, we have no chance to append the header ["Cookie"] = "exif=1"
@@ -1959,7 +2016,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       -- string.match(html, "<div style=\"margin:10px 0;\">本相簿內容已受保護，請輸入密碼：</div>")
       if not new_locations[url] then
-        assert(img_prefix and img_suffix and picture_id, url)
+        if not (img_prefix and img_suffix and picture_id) then
+          print(url)
+          abort_item()
+        end
       end
       -- first in first out
       if img_prefix and img_suffix then
@@ -2096,14 +2156,20 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           if comment["login_type"] == "cht" then
             local sn = string.match(comment["sn"], "^[0-9]+$")
             local uid = string.match(comment["user_id"], "^[0-9A-Za-z._]+$")
-            assert(sn and uid)
-            discover_user(sn, uid)
+            if sn and uid then
+              discover_user(sn, uid)
+            else
+              abort_item()
+            end
           end
           if comment["reply"] then
             local sn = string.match(comment["reply"]["sn"], "^[0-9]+$")
             local uid = string.match(comment["reply"]["user_id"], "^[0-9A-Za-z._]+$")
-            assert(sn and uid)
-            discover_user(sn, uid)
+            if sn and uid then
+              discover_user(sn, uid)
+            else
+              abort_item()
+            end
           end
         end
       end
@@ -2159,8 +2225,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
                 .. "&offset=" .. string.format("%.0f", offset + limit)
                 .. "&limit=" .. string.format("%.0f", limit)
               )
-            else
-              assert(items_n == 0 or offset + items_n - 2 == json["rsp"]["total"])
+            elseif not (items_n == 0 or offset + items_n - 2 == json["rsp"]["total"]) then
+              abort_item()
             end
             if offset == 1 then
               print("Found " .. string.format("%.0f", json["rsp"]["total"]) .. " " .. (method == "blog" and "articles" or "vlogs"))
@@ -2179,7 +2245,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
               end
             end
           else
-            error("Unknown search method " .. method)
+            print("Unknown search method " .. method)
+            abort_item()
           end
           assert(type(json["rsp"]["items"]) == "table")
           for _, item in pairs(json["rsp"]["items"]) do
@@ -2206,8 +2273,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
                   discover_item(discovered_data, "user-malformed:" .. item_name)
                 end
               end
-            else
-              assert(item["type"] == "hot" and item["sn"] == nil and item["uid"] == nil)
+            elseif not (item["type"] == "hot" and item["sn"] == nil and item["uid"] == nil) then
+              abort_item()
             end
           end
         elseif not (type(json["rsp"]) == "boolean" and json["rsp"] == false) then
@@ -2427,7 +2494,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           end
         end
       elseif string.match(url, "/flash_config%.xml$") then
-        error("Unrecognized occurrence of flash_config.xml")
+        print("Unrecognized occurrence of flash_config.xml " .. url)
+        abort_item()
       elseif string.match(url, "blog_[0-9]+/smallpaint/[0-9]+%.xml$") then
         assert(handler.root["DRAWDATA"]["PAINT"])
       elseif string.match(url, "/[0-9]+/face%.xml$") then
@@ -2441,7 +2509,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           end
         end
       else
-        error("Unrecognized occurrence of XML file")
+        print("Unrecognized occurrence of XML file " .. url)
+        abort_item()
       end
     end
   end
