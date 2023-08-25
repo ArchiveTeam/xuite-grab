@@ -1588,7 +1588,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           end
         end
         local loaded = (tonumber(offset) - 1) + json["rsp"]["articles"]["loaded"]
-        if loaded < tonumber(json["rsp"]["total"]) then
+        if not json["rsp"]["total"] then
+          if json["rsp"]["articles"]["loaded"] ~= 0 then
+            abort_item()
+          end
+        elseif not string.match(json["rsp"]["total"], "^[0-9]+$") then
+          abort_item()
+        elseif loaded < tonumber(json["rsp"]["total"]) then
           local referer = "https://m.xuite.net/blog/" .. user_id .. "/" .. blog_url
           check("https://m.xuite.net/rpc/blog?method=loadMoreArticles&offset=" .. string.format("%.0f", loaded + 1) .. "&userAcct=" .. user_id .. "&blogid=" .. blog_id, referer)
         end
