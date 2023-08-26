@@ -2443,80 +2443,82 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
     if string.match(url, "%.xml$") and not new_locations[url] then
       html = read_file(file)
-      local handler = xmlhandler:new()
-      xml2lua.parser(handler):parse(html)
-      if string.match(url, "blog_[0-9]+/djshow/[0-9]+/flash_config%.xml$") then
-        assert(type(handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
-        assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]) == "string")
-        assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]) == "string")
-        assert(handler.root["AAAOE"]["AEB"]["aface_XML"])
-        if handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"] then
-          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
-        else
-          for _, O_PP in pairs(handler.root["AAAOE"]["AEB"]["O_PP"]) do
-            check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", O_PP["_attr"]["O_FP"]))
-          end
-        end
-        check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
-        if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"] ~= "text_filename" then
-          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]))
-        end
-        if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"] ~= "voice_filename" then
-          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]))
-        end
-      elseif string.match(url, "blog_[0-9]+/slideshow/[0-9]+/flash_config%.xml$") then
-        assert(handler.root["SS"]["A_XML"]["P_XML"])
-        assert(type(handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]) == "string")
-        assert(type(handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
-        if handler.root["SS"]["A_XML"]["P_XML"]["_attr"] then
-          check(handler.root["SS"]["A_XML"]["P_XML"]["_attr"]["P_FP"])
-        else
-          for _, P_XML in pairs(handler.root["SS"]["A_XML"]["P_XML"]) do
-            check(P_XML["_attr"]["P_FP"])
-          end
-        end
-        check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
-        check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
-      elseif string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
-        assert(handler.root["NSS"]["SHOW_XML"])
-        assert(handler.root["NSS"]["MP3_XML"])
-      elseif string.match(url, "blog_[0-9]+/snap/[0-9]+/flash_config%.xml$") then
-        assert(handler.root["SNAP"]["templetData"]["back"])
-        assert(handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"])
-        assert(handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"])
-        assert(handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"])
-        check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"]))
-        check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"]))
-        check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"]))
-      elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
-        assert(handler.root["DRAWDATA"]["PAINT"])
-      elseif string.match(url, "blog_[0-9]+/tvwall/flash_config%.xml$") then
-        assert(handler.root["WALL"]["PHO"])
-        if handler.root["WALL"]["PHO"]["_attr"] then
-          check(urlparse.absolute("http://blog.xuite.net/", handler.root["WALL"]["PHO"]["_attr"]["P_UR"]))
-        else
-          for _, PHO in pairs(handler.root["WALL"]["PHO"]) do
-            check(urlparse.absolute("http://blog.xuite.net/", PHO["_attr"]["P_UR"]))
-          end
-        end
-      elseif string.match(url, "/flash_config%.xml$") then
-        print("Unrecognized occurrence of flash_config.xml " .. url)
-        abort_item()
-      elseif string.match(url, "blog_[0-9]+/smallpaint/[0-9]+%.xml$") then
-        assert(handler.root["DRAWDATA"]["PAINT"])
-      elseif string.match(url, "/[0-9]+/face%.xml$") then
-        for key, obj in pairs(handler.root["MYPLAY"]) do
-          if key ~= "_attr" then
-            assert(type(obj["_attr"]["E_UR"]) == "string")
-            if string.len(obj["_attr"]["E_UR"]) >= 1 then
-              assert(string.match(obj["_attr"]["E_UR"], "^swf/[^/%.%?&=]+%.swf"), obj["_attr"]["E_UR"])
-              check(urlparse.absolute("http://blog.xuite.net/_service/face2/", obj["_attr"]["E_UR"]))
+      if not string.match(html, "<title>Xuite 提示訊息</title>") and not string.match(html, "<h1 id=\"message%-title\">此網頁不存在</h1>") then
+        local handler = xmlhandler:new()
+        xml2lua.parser(handler):parse(html)
+        if string.match(url, "blog_[0-9]+/djshow/[0-9]+/flash_config%.xml$") then
+          assert(type(handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
+          assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]) == "string")
+          assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]) == "string")
+          assert(handler.root["AAAOE"]["AEB"]["aface_XML"])
+          if handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"] then
+            check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
+          else
+            for _, O_PP in pairs(handler.root["AAAOE"]["AEB"]["O_PP"]) do
+              check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", O_PP["_attr"]["O_FP"]))
             end
           end
+          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+          if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"] ~= "text_filename" then
+            check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]))
+          end
+          if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"] ~= "voice_filename" then
+            check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]))
+          end
+        elseif string.match(url, "blog_[0-9]+/slideshow/[0-9]+/flash_config%.xml$") then
+          assert(handler.root["SS"]["A_XML"]["P_XML"])
+          assert(type(handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]) == "string")
+          assert(type(handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
+          if handler.root["SS"]["A_XML"]["P_XML"]["_attr"] then
+            check(handler.root["SS"]["A_XML"]["P_XML"]["_attr"]["P_FP"])
+          else
+            for _, P_XML in pairs(handler.root["SS"]["A_XML"]["P_XML"]) do
+              check(P_XML["_attr"]["P_FP"])
+            end
+          end
+          check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
+          check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+        elseif string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
+          assert(handler.root["NSS"]["SHOW_XML"])
+          assert(handler.root["NSS"]["MP3_XML"])
+        elseif string.match(url, "blog_[0-9]+/snap/[0-9]+/flash_config%.xml$") then
+          assert(handler.root["SNAP"]["templetData"]["back"])
+          assert(handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"])
+          assert(handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"])
+          assert(handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"])
+          check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"]))
+          check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"]))
+          check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"]))
+        elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
+          assert(handler.root["DRAWDATA"]["PAINT"])
+        elseif string.match(url, "blog_[0-9]+/tvwall/flash_config%.xml$") then
+          assert(handler.root["WALL"]["PHO"])
+          if handler.root["WALL"]["PHO"]["_attr"] then
+            check(urlparse.absolute("http://blog.xuite.net/", handler.root["WALL"]["PHO"]["_attr"]["P_UR"]))
+          else
+            for _, PHO in pairs(handler.root["WALL"]["PHO"]) do
+              check(urlparse.absolute("http://blog.xuite.net/", PHO["_attr"]["P_UR"]))
+            end
+          end
+        elseif string.match(url, "/flash_config%.xml$") then
+          print("Unrecognized occurrence of flash_config.xml " .. url)
+          abort_item()
+        elseif string.match(url, "blog_[0-9]+/smallpaint/[0-9]+%.xml$") then
+          assert(handler.root["DRAWDATA"]["PAINT"])
+        elseif string.match(url, "/[0-9]+/face%.xml$") then
+          for key, obj in pairs(handler.root["MYPLAY"]) do
+            if key ~= "_attr" then
+              assert(type(obj["_attr"]["E_UR"]) == "string")
+              if string.len(obj["_attr"]["E_UR"]) >= 1 then
+                assert(string.match(obj["_attr"]["E_UR"], "^swf/[^/%.%?&=]+%.swf"), obj["_attr"]["E_UR"])
+                check(urlparse.absolute("http://blog.xuite.net/_service/face2/", obj["_attr"]["E_UR"]))
+              end
+            end
+          end
+        else
+          print("Unrecognized occurrence of XML file " .. url)
+          abort_item()
         end
-      else
-        print("Unrecognized occurrence of XML file " .. url)
-        abort_item()
       end
     end
   end
