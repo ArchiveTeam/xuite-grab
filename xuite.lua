@@ -2582,7 +2582,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if not item_name then
     error("No item name found.")
   end
-  if status_code == 500 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=500$")
+  if status_code >= 500 and tries >= 2 and string.match(url["url"], "^https?://[0-9a-f]%.share%.photo%.xuite%.net/") then
+    -- photo thumbnails
+    abort_item()
+  elseif status_code == 500 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=500$")
     or status_code == 502 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=502$") then
     retry_url = true
     return false
@@ -2682,9 +2685,6 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
   elseif string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
     return false
-  -- photo thumbnails
-  elseif string.match(url["url"], "^https?://[0-9a-f]%.share%.photo%.xuite%.net/") and status_code >= 500 and tries >= 2 then
-    abort_item()
   -- cannot be 302
   elseif string.match(url["url"], "^https?://o%.[0-9a-f]%.photo%.xuite%.net/") and status_code == 302 then
     assert(string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=403$"), newloc)
