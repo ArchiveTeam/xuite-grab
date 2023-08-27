@@ -2686,10 +2686,21 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   elseif string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
     return false
   -- cannot be 302
+  elseif string.match(url["url"], "^https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_o%.[^.\"]+$") and status_code == 302 then
+    if newloc == "http://photo.xuite.net/static/images/logo/not_thumb_o.png" then
+      abort_item()
+    else
+      print(url["url"], newloc)
+      abort_item()
+    end
   elseif string.match(url["url"], "^https?://o%.[0-9a-f]%.photo%.xuite%.net/") and status_code == 302 then
-    assert(string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=403$"), newloc)
-    retry_url = true
-    return false
+    if string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=403$") then
+      retry_url = true
+      return false
+    else
+      print(newloc)
+      abort_item()
+    end
   -- some thumbnails always return 503
   elseif string.match(url["url"], "^https?://pic%.xuite%.net/thumb/") and status_code == 503 then
     return false
