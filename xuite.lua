@@ -856,11 +856,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       check("https://photo.xuite.net/_category?sn=" .. user_sn)
     elseif string.match(url, "^https?://my%.xuite%.net/service/account/api/external/sn_name%.php%?") then
-      html = read_file(file)
-      local json = JSON:decode(string.match(html, "^jQuery[0-9]+_[0-9]+%((.+)%)\r\n$"))
-      if json["nickname"] and string.len(json["nickname"]) >= 1 then
-        discover_keyword(json["nickname"])
-      end
+      -- html = read_file(file)
+      -- local json = JSON:decode(string.match(html, "^jQuery[0-9]+_[0-9]+%((.+)%)\r\n$"))
+      -- if json["nickname"] and string.len(json["nickname"]) >= 1 then
+      --   discover_keyword(json["nickname"])
+      -- end
     elseif string.match(url, "^https?://my%.xuite%.net/service/friend/api/external/friendList%.php%?sn=") and not string.match(url, "&withGroup=true") then
       html = read_file(file)
       if not string.match(html, "^NULL$")
