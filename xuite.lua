@@ -2607,7 +2607,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       return false
     -- vlog file session key has expired
     elseif string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=影音認證碼錯誤$") then
-      abortgrab = true
+      abort_item()
     end
   -- the article must belong to one of the four scenarios
   elseif string.match(url["url"], "^https?://blog%.xuite%.net/[0-9A-Za-z.][0-9A-Za-z._]*/[0-9A-Za-z]+/?[^/%.%?&=]*$") then
@@ -2682,6 +2682,9 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
   elseif string.match(url["url"], "^https?://mms%.blog%.xuite%.net/") then
     return false
+  -- photo thumbnails
+  elseif string.match(url["url"], "^https?://[0-9a-f]%.share%.photo%.xuite%.net/") and status_code >= 500 and tries >= 2 then
+    abort_item()
   -- cannot be 302
   elseif string.match(url["url"], "^https?://o%.[0-9a-f]%.photo%.xuite%.net/") and status_code == 302 then
     assert(string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=403$"), newloc)
