@@ -2688,7 +2688,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if status_code >= 500 and tries >= 2 and string.match(url["url"], "^https?://[0-9a-f]%.share%.photo%.xuite%.net/") then
     -- photo thumbnails
     abort_item()
-  elseif status_code == 500 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=500$")
+  elseif status_code == 500 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=500$") or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?channel=vlog&ecode=500$")
     or status_code == 502 or string.match(newloc, "^https?://my%.xuite%.net/error%.php%?ecode=502$") then
     retry_url = true
     return false
@@ -2708,6 +2708,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=資料錯誤$")
       or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite相簿訊息&info=這本相簿不存在或為不公開相簿喔!!$")
       or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite相簿訊息&info=沒這張照片喔!!$")
+      or string.match(err_url, "%?channel=vlog&ecode=500$")
       or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=抱歉，您瀏覽的影音不存在或為不公開!!$")
       or string.match(err_url, "%?channel=yo&ecode=UserDefine&title=參數錯誤&info=參數錯誤$") then
       return false
