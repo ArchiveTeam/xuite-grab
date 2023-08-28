@@ -1017,8 +1017,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             check(ALBUM["_attr"]["LINK"])
           end
         end
-      else
-        assert(handler.root["DRAW"]["_attr"]["TOTAL"] == "0")
+      elseif handler.root["DRAW"]["_attr"]["TOTAL"] ~= "0" and tostring(handler.root["DRAW"]["_attr"]["TOTAL"]) ~= "0" then
+        abort_item()
       end
     -- user:album
     elseif string.match(url, "^https?://m%.xuite%.net/photo/[0-9A-Za-z._]+$") then
@@ -1029,7 +1029,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         sn, uid = string.match(html, "<img class=\"nftmywall%-thumb%-img\" src=\"//avatar%.xuite%.net/([0-9]+)/s%?t=[0-9]+\" onclick=\"location%.href='/home/([0-9A-Za-z._]+)';\">")
       end
       if not new_locations[url] then
-        assert(sn and uid, url)
+        if not (sn and uid) then
+          print(url)
+          abort_item()
+        end
       end
       if sn then
         assert(uid == user_id)
@@ -1098,14 +1101,33 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       local json = JSON:decode(html)
       for _, tag in pairs(json) do
         if tag["tagid"] == "999" then
-          assert(tag["tagname"] == "尚無任何標籤 , 請新增標籤!", tag["tagname"])
+          if tag["tagname"] ~= "尚無任何標籤 , 請新增標籤!" then
+            print("Unexpected tagname (" .. tag["tagname"] .. ") in " .. url)
+            abort_item()
+          end
         else
-          assert(string.match(tag["sn"], "^[0-9]+$"), tag["sn"])
-          assert(string.match(tag["tagid"], "^[0-9a-f]+$"), tag["tagid"])
-          assert(tag["link"] == "//photo.xuite.net/_category?sn=" .. tag["sn"] .. "&tagid=" .. tag["tagid"], tag["link"])
-          assert(user_id_tbl[tag["sn"]], tag["sn"])
-          check("https:" .. tag["link"])
-          check("https://m.xuite.net/photo/" .. user_id_tbl[tag["sn"]] .. "?t=tag&p=" .. tag["tagid"])
+          if string.match(tag["sn"], "^[0-9]+$") then
+            if string.match(tag["tagid"], "^[0-9a-f]+$") then
+              if tag["link"] == "//photo.xuite.net/_category?sn=" .. tag["sn"] .. "&tagid=" .. tag["tagid"] then
+                check("https:" .. tag["link"])
+              else
+                print("Unexpected tag link (" .. tag["link"] .. ")")
+                abort_item()
+              end
+              if user_id_tbl[tag["sn"]] then
+                check("https://m.xuite.net/photo/" .. user_id_tbl[tag["sn"]] .. "?t=tag&p=" .. tag["tagid"])
+              else
+                print("Cannot infer user_id for user-sn " .. tag["sn"])
+                abort_item()
+              end
+            else
+              print("Unexpected tagid " .. tag["tagid"] .. " in " .. url)
+              abort_item()
+            end
+          else
+            print("Cannot find user-sn")
+            abort_item()
+          end
         end
       end
     elseif string.match(url, "^https?://m%.xuite%.net/photo/[0-9A-Za-z._]+%?t=tag&p=[0-9a-f]+$") then
@@ -1273,8 +1295,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
     elseif string.match(url, "^https?://vlog%.xuite%.net/_playlist/play%?plid=[0-9]+$") then
       local plid = string.match(url, "^https?://vlog%.xuite%.net/_playlist/play%?plid=([0-9]+)$")
-      assert(new_locations[url], url)
-      if not string.match(new_locations[url], "^https://my%.xuite%.net/error%.php%?") then
+      if not new_locations[url] then
+        print(url)
+        abort_item()
+      elseif not string.match(new_locations[url], "^https://my%.xuite%.net/error%.php%?") then
         assert(string.match(new_locations[url], "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+%?as=1&list=([0-9]+)$") == plid, new_locations[url])
       end
     elseif string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+%?as=1&list=[0-9]+$") then
@@ -1958,9 +1982,16 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if json["error"] == nil then
         local photos_n = 0
         for _, _ in pairs(json["photos"]) do photos_n = photos_n + 1 end
-        assert(json["user_id"] == user_id)
-        assert(json["album_id"] == album_id)
-        assert(tonumber(count) <= 0 and tonumber(json["total"]) == photos_n or tonumber(count) >= photos_n)
+        if not (json["user_id"] == user_id and json["album_id"] == album_id) then
+          print(url, json["user_id"], json["album_id"])
+          abort_item()
+        elseif not (tonumber(count) <= 0 and (tonumber(json["total"]) == photos_n or (tonumber(json["total"]) >= 2000 and photos_n == 2000))) then
+          print(url, json["total"], photos_n)
+          abort_item()
+        elseif not (tonumber(count) >= photos_n) then
+          print(url, json["total"], photos_n)
+          abort_item()
+        end
       end
     elseif string.match(url, "^https?://m%.xuite%.net/rpc/photo%?method=loadPhotos&userId=[0-9A-Za-z._]+&albumId=[0-9]+&limit=24&offset=[0-9]+$") then
       local user_id, album_id, offset = string.match(url, "^https?://m%.xuite%.net/rpc/photo%?method=loadPhotos&userId=([0-9A-Za-z._]+)&albumId=([0-9]+)&limit=24&offset=([0-9]+)$")
@@ -1982,10 +2013,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local start = string.match(url, "&start=([0-9]+)")
         local photos_n = 0
         for _, photo in pairs(json["rsp"]["photos"]) do
-          assert(string.match(photo["position"], "^[0-9]+$"))
-          local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
-          check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. photo["position"], referer)
-          check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", "https://m.xuite.net/")
+          if not string.match(photo["position"], "^[0-9]+$") then
+            print("Cannot find photo position from " .. url, photo["position"])
+            abort_item()
+          else
+            local referer = "https://m.xuite.net/photo/" .. user_id .. "/" .. album_id
+            check("https://m.xuite.net/photo/" .. user_id .. "/" .. album_id .. "/" .. photo["position"], referer)
+            check("https://photo.xuite.net/" .. user_id .. "/" .. album_id .. "/" .. photo["position"] .. ".jpg", "https://m.xuite.net/")
+          end
           photos_n = photos_n + 1
         end
         if tonumber(json["rsp"]["total"]) > tonumber(start) + 500 and photos_n >= 1 then
@@ -2068,9 +2103,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       html = read_file(file)
       if not new_locations[url] then
         local img_orig = string.match(html, "<a href=\"[^\"<>]+\"><img src=\"(//o%.[0-9a-f]%.photo%.xuite%.net/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9a-f]/[0-9A-Za-z._]+/[0-9]+/[0-9]+%.[^.\"]+)\" alt=\"\" class=\"[^\"<>]*\"></a>")
-        assert(img_orig, "Could not find the original resolution of the photo. " .. url)
-        -- must be requested with a valid referrer header!
-        check("https:" .. img_orig, "https://photo.xuite.net/")
+        if img_orig then
+          -- must be requested with a valid referrer header!
+          check("https:" .. img_orig, "https://photo.xuite.net/")
+        else
+          print("Could not find the original resolution of the photo. " .. url)
+          abort_item()
+        end
       end
     end
   end
@@ -2080,31 +2119,41 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     if string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]+$") then
       local vlog_id = string.match(url, "^https?://vlog%.xuite%.net/play/([0-9A-Za-z=]+)$")
       assert(vlog_id == item_value)
-      local media_id = string.match(base64.decode(vlog_id), "%-([0-9]+)%.[0-9a-z]+$")
+      -- local media_id = string.match(base64.decode(vlog_id), "%-([0-9]+)%.[0-9a-z]+$")
       html = read_file(file)
       if string.match(html, "<meta name=\"medium\" content=\"video\" />") then
         local media_info = string.match(html, "\n    <script>\n        var mediaInfo = ({[^\n]+});\n        var pageInfo = {[^\n]+};\n")
-        assert(media_info)
-        local json = JSON:decode(media_info)
-        assert(json["MEDIA_TYPE"] == "1" or json["MEDIA_TYPE"] == "2")
-        assert(json["base64FileName"] == vlog_id)
-        assert(json["MEDIA_ID"] == media_id)
-        for _, key in pairs({ "html5HQUrl2", "html5HQUrl", "html5Url" }) do
-          if string.len(json[key]) >= 1 then
-            assert(string.match(json[key], "^//[^/]"), json[key])
-            check("https:" .. json[key], "https://vlog.xuite.net/")
+        if media_info then
+          local json = JSON:decode(media_info)
+          -- assert(json["MEDIA_TYPE"] == "1" or json["MEDIA_TYPE"] == "2")
+          -- assert(json["base64FileName"] == vlog_id)
+          -- assert(json["MEDIA_ID"] == media_id)
+          for _, key in pairs({ "html5HQUrl2", "html5HQUrl", "html5Url" }) do
+            if string.len(json[key]) >= 1 then
+              if not string.match(json[key], "^//[^/]") then
+                print(key .. " is malformed (" .. json[key] .. ") in " .. url)
+                abort_item()
+              else
+                check("https:" .. json[key], "https://vlog.xuite.net/")
+              end
+            end
           end
+          if string.len(json["thumbSBX"]) >= 1 then check("https:" .. json["thumbSBX"], url) end
+          if string.len(json["ogImageUrl"]) >= 1 then check(json["ogImageUrl"], url) end
+          if string.len(json["thumbnailUrl"]) >= 1 then check("https:" .. json["thumbnailUrl"], url) end
+          if json["MEDIA_TYPE"] == "1" then
+            check("https://vlog.xuite.net/flash/audioplayer?media=" .. base64.encode(json["MEDIA_ID"]))
+          end
+          check("https://vlog.xuite.net/flash/player?media=" .. base64.encode(json["MEDIA_ID"]))
+          check("https://vlog.xuite.net/_api/media/playcheck/media/" .. base64.encode(json["MEDIA_ID"]))
+        else
+          print("Cannot find mediaInfo from " .. url)
+          abort_item()
         end
-        if string.len(json["thumbSBX"]) >= 1 then check("https:" .. json["thumbSBX"], url) end
-        if string.len(json["ogImageUrl"]) >= 1 then check(json["ogImageUrl"], url) end
-        if string.len(json["thumbnailUrl"]) >= 1 then check("https:" .. json["thumbnailUrl"], url) end
-        if json["MEDIA_TYPE"] == "1" then
-          check("https://vlog.xuite.net/flash/audioplayer?media=" .. base64.encode(json["MEDIA_ID"]))
-        end
-        check("https://vlog.xuite.net/flash/player?media=" .. base64.encode(json["MEDIA_ID"]))
-        check("https://vlog.xuite.net/_api/media/playcheck/media/" .. base64.encode(json["MEDIA_ID"]))
       else
-        assert(string.match(html, "<h1 id=\"message%-title\">Xuite 影音錯誤訊息</h1>"), url)
+        if not string.match(html, "<h1 id=\"message%-title\">Xuite 影音錯誤訊息</h1>") then
+          abort_item()
+        end
       end
       check(
         "https://api.xuite.net/api.php?api_key=" .. xuite_api_key
@@ -2149,9 +2198,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local val_cmmtArg = string.match(html, "<input type=\"hidden\" class=\"cmmtArg\" value=\"([^\"<>]*)\"/>")
         if string.len(val_cmmtArg) >= 1 then
           local userAccount, vlogId = string.match(val_cmmtArg, "^vlog,([^\"<>]+),([^\"<>]+)$")
-          assert(userAccount == user_id)
-          assert(vlogId == vlog_id)
-          check("https://m.xuite.net/rpc/vlog?method=loadComment&userAccount=" .. userAccount .. "&vlogId=" .. vlogId:gsub("=", "%%3D"), url)
+          if userAccount == user_id and vlogId == vlog_id then
+            check("https://m.xuite.net/rpc/vlog?method=loadComment&userAccount=" .. userAccount .. "&vlogId=" .. vlogId:gsub("=", "%%3D"), url)
+          else
+            abort_item()
+          end
         end
       end
     elseif string.match(url, "^https?://m%.xuite%.net/rpc/vlog%?method=loadComment&userAccount=[0-9A-Za-z._]+&vlogId=[0-9A-Za-z=%%]+$") then
@@ -2306,79 +2357,110 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshow%.swf%?")
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowA%.swf%?")
       or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowNB%.swf%?")
-      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowMM%.swf%?") then
-      assert(type(args["id"]) == "string" or type(args["user_id"]) == "string")
-      assert(type(args["album"]) == "string" or type(args["album_id"]) == "string")
-      local user_id = args["id"] or args["user_id"]
-      local album_id = args["album"] or args["album_id"]
-      discover_album(user_id, album_id)
+      or string.match(url, "^https?://blog%.xuite%.net/_service/swf/slideshowMM%.swf%?")
+      or string.match(url, "^https?://photo%.xuite%.net/images/player/slide_xuite%.swf%?") then
+      if (type(args["id"]) == "string" or type(args["user_id"]) == "string") and (type(args["album"]) == "string" or type(args["album_id"]) == "string") then
+        local user_id = args["id"] or args["user_id"]
+        local album_id = args["album"] or args["album_id"]
+        discover_album(user_id, album_id)
+      else
+        abort_item()
+      end
     -- 變身錄音筆
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/main%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/djshow/", args["service_url"])
-      assert(args["face_swf_url"] == "/_service/face2", args["face_swf_url"])
-      assert(type(args["mp3path"]) == "string")
-      assert(type(args["txtpath"]) == "string")
-      assert(args["act"] == "show", args["act"])
-      assert(type(args["face_url"]) == "string")
-      assert(argc == 8)
+      if not (
+            type(args["xml_url"]) == "string"
+        and args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/djshow/"
+        and args["face_swf_url"] == "/_service/face2"
+        and type(args["mp3path"]) == "string"
+        and type(args["txtpath"]) == "string"
+        and args["act"] == "show"
+        and type(args["face_url"]) == "string"
+        and argc == 8
+      ) then
+        abort_item()
+      end
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/action/.+%.swf$")
       or string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/front/.+%.swf$")
       or string.match(url, "^https?://blog%.xuite%.net/_service/djshow/swf/templet/.+%.swf$") then
       -- do nothing
     -- 自拍相片本
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/main%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/slideshow/", args["service_url"])
-      assert(type(args["ImageUrl"]) == "string")
-      assert(args["act"] == "show", args["act"])
-      assert(argc == 5)
+      if not (
+            type(args["xml_url"]) == "string"
+        and args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/slideshow/"
+        and type(args["ImageUrl"]) == "string"
+        and args["act"] == "show"
+        and argc == 5
+      ) then
+        abort_item()
+      end
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/slideshow/swf/templet/.+%.swf$") then
       -- do nothing
     -- 愛秀投影機
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/mtv/swf/main%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/mtv/", args["service_url"])
-      assert(type(args["ImageUrl"]) == "string")
-      assert(type(args["SoundUrl"]) == "string")
-      assert(args["act"] == "show", args["act"])
-      assert(argc == 6)
+      if not (
+            type(args["xml_url"]) == "string"
+        and args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/mtv/"
+        and type(args["ImageUrl"]) == "string"
+        and type(args["SoundUrl"]) == "string"
+        and args["act"] == "show"
+        and argc == 6
+      ) then
+        abort_item()
+      end
     -- 快速變臉筆
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/snap/swf/main%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/snap/", args["service_url"])
-      assert(type(args["ImageUrl"]) == "string")
-      assert(args["act"] == "show", args["act"])
-      assert(argc == 5)
+      if not (
+            type(args["xml_url"]) == "string"
+        and args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/snap/"
+        and type(args["ImageUrl"]) == "string"
+        and args["act"] == "show"
+        and argc == 5
+      ) then
+        abort_item()
+      end
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/snap/swf/templet/.+%.swf$") then
       -- do nothing
     -- 手寫塗鴉版
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/paint/swf/show%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/paint/", args["service_url"])
-      assert(args["act"] == "show", args["act"])
-      assert(argc == 4)
+      if not (
+            type(args["xml_url"]) == "string"
+        and args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/paint/"
+        and args["act"] == "show"
+        and argc == 4
+      ) then
+        abort_item()
+      end
     -- 留言塗鴉版
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/smallpaint/swf/main%.swf%?") then
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/smallpaint/", args["service_url"])
-      assert(args["save_url"] == "/_service/smallpaint/save.php", args["save_url"])
-      assert(args["list_url"] == "/_service/smallpaint/list.php", args["list_url"])
-      assert(type(args["bid"]) == "string" and string.match(args["bid"], "^[0-9]+$"), args["bid"])
-      assert(args["author"] == "Y" or args["author"] == "N", args["author"])
-      assert(argc == 6)
+      if not (
+            args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/smallpaint/"
+        and args["save_url"] == "/_service/smallpaint/save.php"
+        and args["list_url"] == "/_service/smallpaint/list.php"
+        and type(args["bid"]) == "string" and string.match(args["bid"], "^[0-9]+$")
+        and (args["author"] == "Y" or args["author"] == "N")
+        and argc == 6
+      ) then
+        abort_item()
+      end
     -- 電視牆
     elseif string.match(url, "^https?://blog%.xuite%.net/_service/wall/swf/main%.swf%?") then
-      assert(type(args["xml_url"]) == "string")
-      assert(args["server_url"] == "/_users", args["server_url"])
-      assert(args["service_url"] == "/_service/wall/", args["service_url"])
-      assert(args["act"] == "show", args["act"])
-      assert((type(args["nocache"]) == "string" and argc == 5) or (type(args["nocache"]) == "nil" and argc == 4))
+      if not (
+            type(args["xml_url"]) == "string"
+        and args["server_url"] == "/_users"
+        and args["service_url"] == "/_service/wall/"
+        and args["act"] == "show"
+        and ((type(args["nocache"]) == "string" and argc == 5) or (type(args["nocache"]) == "nil" and argc == 4))
+      ) then
+        abort_item()
+      end
     elseif string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/audio_player%.swf%??[^?]*$")
       or string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/index_player%.swf%??[^?]*$")
       or string.match(url, "^https?://vlog%.xuite%.net/vlog/swf/lite%.swf%??[^?]*$")
@@ -2390,20 +2472,24 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       abort_item()
     end
     local check_assetUrl = function(url)
-      assert(string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
-        or string.match(url, "^https?://mms%.blog%.xuite%.net/")
-        or string.match(url, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/"), url)
+      -- assert(string.match(url, "^https?://[0-9a-f]%.blog%.xuite%.net/")
+      --   or string.match(url, "^https?://mms%.blog%.xuite%.net/")
+      --   or string.match(url, "^https?://[0-9a-f]%.mms%.blog%.xuite%.net/"), url)
       check(url)
     end
     if type(args["xml_url"]) == "string" then
-      assert(string.match(args["xml_url"], "^/.+/flash_config%.xml$")
-        or string.match(args["xml_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/flash_config%.xml$"), args["xml_url"])
-      check(urlparse.absolute("http://blog.xuite.net/", args["xml_url"]))
+      if string.match(args["xml_url"], "^/.+/flash_config%.xml$") or string.match(args["xml_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/flash_config%.xml$") then
+        check(urlparse.absolute("http://blog.xuite.net/", args["xml_url"]))
+      else
+        abort_item()
+      end
     end
     if type(args["face_url"]) == "string" then
-      assert(string.match(args["face_url"], "^/.+/face%.xml$")
-        or string.match(args["face_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/face%.xml$"), args["face_url"])
-      check(urlparse.absolute("http://blog.xuite.net/", args["face_url"]))
+      if string.match(args["face_url"], "^/.+/face%.xml$") or string.match(args["face_url"], "^https?://[0-9a-f]%.blog%.xuite%.net/.+/face%.xml$") then
+        check(urlparse.absolute("http://blog.xuite.net/", args["face_url"]))
+      else
+        abort_item()
+      end
     end
     if type(args["ImageUrl"]) == "string" then
       for image in string.gmatch(args["ImageUrl"], "[^,]+") do
@@ -2412,9 +2498,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
     for _, arg_name in pairs({ "SoundUrl", "mp3path", "txtpath" }) do
       if type(args[arg_name]) == "string" then
-        assert(select(2, args[arg_name]:gsub(",", ",")) == 0)
-        if string.len(args[arg_name]) >= 1 then
-          check_assetUrl(args[arg_name])
+        if select(2, args[arg_name]:gsub(",", ",")) == 0 then
+          if string.len(args[arg_name]) >= 1 then
+            check_assetUrl(args[arg_name])
+          end
+        else
+          abort_item()
         end
       end
     end
@@ -2447,10 +2536,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local handler = xmlhandler:new()
         xml2lua.parser(handler):parse(html)
         if string.match(url, "blog_[0-9]+/djshow/[0-9]+/flash_config%.xml$") then
-          assert(type(handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
-          assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]) == "string")
-          assert(type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]) == "string")
-          assert(handler.root["AAAOE"]["AEB"]["aface_XML"])
+          -- assert(handler.root["AAAOE"]["AEB"]["aface_XML"])
           if handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"] then
             check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
           else
@@ -2458,60 +2544,77 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
               check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", O_PP["_attr"]["O_FP"]))
             end
           end
-          check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
-          if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"] ~= "text_filename" then
+          if type(handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string" then
+            check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+          end
+          if type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]) == "string" and handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"] ~= "text_filename" then
             check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_tx"]))
           end
-          if handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"] ~= "voice_filename" then
+          if type(handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]) == "string" and handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"] ~= "voice_filename" then
             check(urlparse.absolute("http://blog.xuite.net/_service/djshow/", handler.root["AAAOE"]["AEB"]["voice_XML"]["_attr"]["voice_fn"]))
           end
         elseif string.match(url, "blog_[0-9]+/slideshow/[0-9]+/flash_config%.xml$") then
-          assert(handler.root["SS"]["A_XML"]["P_XML"])
-          assert(type(handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]) == "string")
-          assert(type(handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string")
-          if handler.root["SS"]["A_XML"]["P_XML"]["_attr"] then
-            check(handler.root["SS"]["A_XML"]["P_XML"]["_attr"]["P_FP"])
-          else
-            for _, P_XML in pairs(handler.root["SS"]["A_XML"]["P_XML"]) do
-              check(P_XML["_attr"]["P_FP"])
+          if handler.root["SS"]["A_XML"]["P_XML"] then
+            if handler.root["SS"]["A_XML"]["P_XML"]["_attr"] then
+              check(handler.root["SS"]["A_XML"]["P_XML"]["_attr"]["P_FP"])
+            else
+              for _, P_XML in pairs(handler.root["SS"]["A_XML"]["P_XML"]) do
+                check(P_XML["_attr"]["P_FP"])
+              end
             end
           end
-          check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
-          check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+          if type(handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]) == "string" then
+            check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["O_PP"]["_attr"]["O_FP"]))
+          end
+          if type(handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]) == "string" then
+            check(urlparse.absolute("http://blog.xuite.net/_service/slideshow/", handler.root["SS"]["AAAOE"]["AEB"]["MP3_XML"]["_attr"]["Mp3_FP"]))
+          end
         elseif string.match(url, "blog_[0-9]+/mtv/[0-9]+/flash_config%.xml$") then
-          assert(handler.root["NSS"]["SHOW_XML"])
-          assert(handler.root["NSS"]["MP3_XML"])
+          if not (handler.root["NSS"]["SHOW_XML"] and handler.root["NSS"]["MP3_XML"]) then
+            abort_item()
+          end
         elseif string.match(url, "blog_[0-9]+/snap/[0-9]+/flash_config%.xml$") then
-          assert(handler.root["SNAP"]["templetData"]["back"])
-          assert(handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"])
-          assert(handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"])
-          assert(handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"])
-          check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"]))
-          check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"]))
-          check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"]))
+          if handler.root["SNAP"]["templetData"]["back"] then
+            if type(handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"]) == "string" then
+              check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_P"]["_attr"]["FP"]))
+            end
+            if type(handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"]) == "string" then
+              check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["NA_T"]["_attr"]["FP"]))
+            end
+            if type(handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"]) == "string" then
+              check(urlparse.absolute("http://blog.xuite.net/_service/snap/", handler.root["SNAP"]["templetData"]["back"]["MP3_XML"]["_attr"]["FP"]))
+            end
+          end
         elseif string.match(url, "blog_[0-9]+/paint/[0-9]+/flash_config%.xml$") then
-          assert(handler.root["DRAWDATA"]["PAINT"])
+          if not handler.root["DRAWDATA"]["PAINT"] then
+            abort_item()
+          end
         elseif string.match(url, "blog_[0-9]+/tvwall/flash_config%.xml$") then
-          assert(handler.root["WALL"]["PHO"])
-          if handler.root["WALL"]["PHO"]["_attr"] then
-            check(urlparse.absolute("http://blog.xuite.net/", handler.root["WALL"]["PHO"]["_attr"]["P_UR"]))
-          else
-            for _, PHO in pairs(handler.root["WALL"]["PHO"]) do
-              check(urlparse.absolute("http://blog.xuite.net/", PHO["_attr"]["P_UR"]))
+          if handler.root["WALL"]["PHO"] then
+            if handler.root["WALL"]["PHO"]["_attr"] then
+              check(urlparse.absolute("http://blog.xuite.net/", handler.root["WALL"]["PHO"]["_attr"]["P_UR"]))
+            else
+              for _, PHO in pairs(handler.root["WALL"]["PHO"]) do
+                check(urlparse.absolute("http://blog.xuite.net/", PHO["_attr"]["P_UR"]))
+              end
             end
           end
         elseif string.match(url, "/flash_config%.xml$") then
           print("Unrecognized occurrence of flash_config.xml " .. url)
           abort_item()
         elseif string.match(url, "blog_[0-9]+/smallpaint/[0-9]+%.xml$") then
-          assert(handler.root["DRAWDATA"]["PAINT"])
+          if not handler.root["DRAWDATA"]["PAINT"] then
+            abort_item()
+          end
         elseif string.match(url, "/[0-9]+/face%.xml$") then
           for key, obj in pairs(handler.root["MYPLAY"]) do
             if key ~= "_attr" then
-              assert(type(obj["_attr"]["E_UR"]) == "string")
-              if string.len(obj["_attr"]["E_UR"]) >= 1 then
-                assert(string.match(obj["_attr"]["E_UR"], "^swf/[^/%.%?&=]+%.swf"), obj["_attr"]["E_UR"])
-                check(urlparse.absolute("http://blog.xuite.net/_service/face2/", obj["_attr"]["E_UR"]))
+              if type(obj["_attr"]["E_UR"]) == "string" and string.len(obj["_attr"]["E_UR"]) >= 1 then
+                if string.match(obj["_attr"]["E_UR"], "^swf/[^/%.%?&=]+%.swf") then
+                  check(urlparse.absolute("http://blog.xuite.net/_service/face2/", obj["_attr"]["E_UR"]))
+                else
+                  abort_item()
+                end
               end
             end
           end
