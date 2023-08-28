@@ -2233,10 +2233,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     -- vlog:file
     elseif string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/.+$") then
       -- Let URL-agnostic deduplication happens
-      local vlog_suffix = string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/(.+)$")
-      for i = 15, 0, -1 do
-        check(string.format("https://%x.mms.vlog.xuite.net/", i) .. vlog_suffix)
-      end
+      -- local vlog_suffix = string.match(url, "^https?://[0-9a-f]%.mms%.vlog%.xuite%.net/(.+)$")
+      -- for i = 15, 0, -1 do
+      --   check(string.format("https://%x.mms.vlog.xuite.net/", i) .. vlog_suffix)
+      -- end
     end
   end
 
