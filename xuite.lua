@@ -333,6 +333,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/[A-Za-z_]+%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "/%${[A-Za-z%$%[%]_]+}%${[A-Za-z%$%[%]_]+}$")
     or string.match(url, "^https?://api%.xuite%.net/\\\"https?:\\/\\/.+\\\"$")
+    or string.match(url, "^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg/sizes/[lmst]/$")
     or string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]*/\"http")
     or string.match(url, "^https?://vlog%.xuite%.net/play/[0-9A-Za-z=]*/?\\/\\/vlog%.xuite%.net")
     or not string.match(url, "^https?://") then
@@ -379,7 +380,7 @@ allowed = function(url, parenturl)
     ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
     ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)$"]="album",
     ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg$"]="photo",
-    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg/sizes/[oxlmst]/$"]="photo",
+    ["^https?://photo%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)/([0-9]+)/([0-9]+)%.jpg/sizes/[ox]/$"]="photo",
     ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)$"]="user",
     ["^https?://vlog%.xuite%.net/([0-9A-Za-z.][0-9A-Za-z._]*)%?vt=[01]$"]="user",
     ["^https?://vlog%.xuite%.net/embed/([0-9A-Za-z=]+)"]="vlog",
@@ -2064,22 +2065,22 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       -- first in first out
       if img_prefix and img_suffix then
-        check(img_prefix .. "o" .. img_suffix, "https://photo.xuite.net/")
+        -- check(img_prefix .. "o" .. img_suffix, "https://photo.xuite.net/")
         check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
       end
-      check(url .. "/sizes/t/", url .. "/sizes/o/")
-      if img_prefix and img_suffix then
-        check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
-      end
-      check(url .. "/sizes/s/", url .. "/sizes/o/")
-      if img_prefix and img_suffix then
-        check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
-      end
-      check(url .. "/sizes/m/", url .. "/sizes/o/")
-      if img_prefix and img_suffix then
-        check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
-      end
-      check(url .. "/sizes/l/", url .. "/sizes/o/")
+      -- check(url .. "/sizes/t/", url .. "/sizes/o/")
+      -- if img_prefix and img_suffix then
+      --   check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
+      -- end
+      -- check(url .. "/sizes/s/", url .. "/sizes/o/")
+      -- if img_prefix and img_suffix then
+      --   check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
+      -- end
+      -- check(url .. "/sizes/m/", url .. "/sizes/o/")
+      -- if img_prefix and img_suffix then
+      --   check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
+      -- end
+      -- check(url .. "/sizes/l/", url .. "/sizes/o/")
       if img_prefix and img_suffix then
         check(img_prefix .. "x" .. img_suffix, "https://photo.xuite.net/")
       end
@@ -2521,11 +2522,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
     if string.match(url, "^https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_[oxlmstqQ]%.[^.\"]+$") then
       local img_prefix, img_suffix = string.match(url, "^(https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[oxlmstqQ](%.[^.\"]+)$")
-      check(img_prefix .. "o" .. img_suffix, "https://photo.xuite.net/")
+      -- check(img_prefix .. "o" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
-      check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
-      check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
-      check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
+      -- check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
+      -- check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
+      -- check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "x" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "q" .. img_suffix, "https://photo.xuite.net/")
       check(img_prefix .. "Q" .. img_suffix, "https://photo.xuite.net/")
