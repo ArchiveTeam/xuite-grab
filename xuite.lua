@@ -2066,7 +2066,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       -- first in first out
       if img_prefix and img_suffix then
         -- check(img_prefix .. "o" .. img_suffix, "https://photo.xuite.net/")
-        check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
+        -- check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
       end
       -- check(url .. "/sizes/t/", url .. "/sizes/o/")
       -- if img_prefix and img_suffix then
@@ -2523,7 +2523,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     if string.match(url, "^https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_[oxlmstqQ]%.[^.\"]+$") then
       local img_prefix, img_suffix = string.match(url, "^(https?://[0-9a-f]%.share%.photo%.xuite%.net/[0-9A-Za-z._]+/[0-9a-f]+/[0-9]+/[0-9]+_)[oxlmstqQ](%.[^.\"]+)$")
       -- check(img_prefix .. "o" .. img_suffix, "https://photo.xuite.net/")
-      check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
+      -- check(img_prefix .. "t" .. img_suffix, "https://photo.xuite.net/")
       -- check(img_prefix .. "s" .. img_suffix, "https://photo.xuite.net/")
       -- check(img_prefix .. "m" .. img_suffix, "https://photo.xuite.net/")
       -- check(img_prefix .. "l" .. img_suffix, "https://photo.xuite.net/")
