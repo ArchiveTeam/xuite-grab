@@ -1986,9 +1986,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         if not (json["user_id"] == user_id and json["album_id"] == album_id) then
           print(url, json["user_id"], json["album_id"])
           abort_item()
-        elseif not (tonumber(count) <= 0 and (tonumber(json["total"]) == photos_n or (tonumber(json["total"]) >= 2000 and photos_n == 2000))) then
-          print(url, json["total"], photos_n)
-          abort_item()
+        elseif tonumber(count) <= 0 then
+          if not (tonumber(json["total"]) == photos_n or (tonumber(json["total"]) >= 2000 and photos_n == 2000)) then
+            print(url, json["total"], photos_n)
+            abort_item()
+          end
         elseif not (tonumber(count) >= photos_n) then
           print(url, json["total"], photos_n)
           abort_item()
