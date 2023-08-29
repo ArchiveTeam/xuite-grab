@@ -2707,16 +2707,24 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       or string.match(err_url, "%?channel=www&ecode=NoAccount$")
       or string.match(err_url, "%?channel=www&ecode=Nodata$")
       or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=此日誌開放設定為被隱藏!!$")
+      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite%%E6%%97%%A5%%E8%%AA%%8C%%E9%%8C%%AF%%E8%%AA%%A4%%E8%%A8%%8A%%E6%%81%%AF&info=%%E6%%AD%%A4%%E6%%97%%A5%%E8%%AA%%8C%%E9%%96%%8B%%E6%%94%%BE%%E8%%A8%%AD%%E5%%AE%%9A%%E7%%82%%BA%%E8%%A2%%AB%%E9%%9A%%B1%%E8%%97%%8F!!$")
       or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=文章不存在$")
+      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite%%E6%%97%%A5%%E8%%AA%%8C%%E9%%8C%%AF%%E8%%AA%%A4%%E8%%A8%%8A%%E6%%81%%AF&info=%%E6%%96%%87%%E7%%AB%%A0%%E4%%B8%%8D%%E5%%AD%%98%%E5%%9C%%A8$")
       or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite日誌錯誤訊息&info=資料錯誤$")
+      or string.match(err_url, "%?channel=blog&ecode=UserDefine&status=404&title=Xuite%%E6%%97%%A5%%E8%%AA%%8C%%E9%%8C%%AF%%E8%%AA%%A4%%E8%%A8%%8A%%E6%%81%%AF&info=%%E8%%B3%%87%%E6%%96%%99%%E9%%8C%%AF%%E8%%AA%%A4$")
       or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite相簿訊息&info=這本相簿不存在或為不公開相簿喔!!$")
+      or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite%%E7%%9B%%B8%%E7%%B0%%BF%%E8%%A8%%8A%%E6%%81%%AF&info=%%E9%%80%%99%%E6%%9C%%AC%%E7%%9B%%B8%%E7%%B0%%BF%%E4%%B8%%8D%%E5%%AD%%98%%E5%%9C%%A8%%E6%%88%%96%%E7%%82%%BA%%E4%%B8%%8D%%E5%%85%%AC%%E9%%96%%8B%%E7%%9B%%B8%%E7%%B0%%BF%%E5%%96%%94!!$")
       or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite相簿訊息&info=沒這張照片喔!!$")
+      or string.match(err_url, "%?channel=photo&ecode=UserDefine&title=Xuite%%E7%%9B%%B8%%E7%%B0%%BF%%E8%%A8%%8A%%E6%%81%%AF&info=%%E6%%B2%%92%%E9%%80%%99%%E5%%BC%%B5%%E7%%85%%A7%%E7%%89%%87%%E5%%96%%94!!$")
       or string.match(err_url, "%?channel=vlog&ecode=500$")
       or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=抱歉，您瀏覽的影音不存在或為不公開!!$")
-      or string.match(err_url, "%?channel=yo&ecode=UserDefine&title=參數錯誤&info=參數錯誤$") then
+      or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite%%E5%%BD%%B1%%E9%%9F%%B3%%E9%%8C%%AF%%E8%%AA%%A4%%E8%%A8%%8A%%E6%%81%%AF&info=%%E6%%8A%%B1%%E6%%AD%%89%%EF%%BC%%8C%%E6%%82%%A8%%E7%%80%%8F%%E8%%A6%%BD%%E7%%9A%%84%%E5%%BD%%B1%%E9%%9F%%B3%%E4%%B8%%8D%%E5%%AD%%98%%E5%%9C%%A8%%E6%%88%%96%%E7%%82%%BA%%E4%%B8%%8D%%E5%%85%%AC%%E9%%96%%8B!!$")
+      or string.match(err_url, "%?channel=yo&ecode=UserDefine&title=參數錯誤&info=參數錯誤$")
+      or string.match(err_url, "%?channel=yo&ecode=UserDefine&title=%%E5%%8F%%83%%E6%%95%%B8%%E9%%8C%%AF%%E8%%AA%%A4&info=%%E5%%8F%%83%%E6%%95%%B8%%E9%%8C%%AF%%E8%%AA%%A4$") then
       return false
     -- vlog file session key has expired
-    elseif string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=影音認證碼錯誤$") then
+    elseif string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite影音錯誤訊息&info=影音認證碼錯誤$")
+      or string.match(err_url, "%?channel=vlog&ecode=UserDefine&title=Xuite%%E5%%BD%%B1%%E9%%9F%%B3%%E9%%8C%%AF%%E8%%AA%%A4%%E8%%A8%%8A%%E6%%81%%AF&info=%%E5%%BD%%B1%%E9%%9F%%B3%%E8%%AA%%8D%%E8%%AD%%89%%E7%%A2%%BC%%E9%%8C%%AF%%E8%%AA%%A4$") then
       abort_item()
     end
   -- the article must belong to one of the four scenarios
